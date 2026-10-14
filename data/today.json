@@ -1,7 +1,25 @@
 {
-  "status": "시제품 · 자동 수집 미연결",
-  "title": "2026년 10월 9일 경기 일정 (확인된 예시)",
-  "updated_at": "2026-10-08 (KBO 공개 일정 확인)",
-  "games": [{"time":"14:00","away":"KIA","home":"NC","venue":"창원"}],
-  "note": "실제 선발투수·라인업·예상 스코어는 아직 연결되지 않았습니다. 확인되지 않은 기록을 임의로 표시하지 않습니다."
+  "standings": [],
+  "standings_status": "순위 데이터 확인 불가",
+  "status": "KBO 공식 경기 일정 확인 · 라인업은 출처 확인 시 표시",
+  "title": "2026-10-14 KBO 경기 일정",
+  "game_date": "2026-10-14",
+  "updated_at": "2026-10-14T16:21+09:00",
+  "source": "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx",
+  "games": [
+    {
+      "time": "18:30",
+      "away": "두산",
+      "home": "LG",
+      "venue": "잠실",
+      "starting_pitchers": null,
+      "lineups": null,
+      "prediction": null,
+      "insights": [
+        "검증된 팀 득실점 자료가 없어 예상 점수와 승패를 보류합니다.",
+        "공식 선발 라인업 미확인: 기대 선수·경계 선수를 임의로 선정하지 않습니다."
+      ]
+    }
+  ],
+  "note": "일정은 KBO 공식 자료를 기준으로 합니다. 예측은 검증된 기록이 있을 때만 표시합니다. 포스트시즌 조건부 경기는 개최 여부를 별도로 확인해야 합니다."
 }
