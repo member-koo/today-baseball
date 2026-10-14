@@ -15,6 +15,7 @@ from data_quality import assess
 from preview_rules import validate_games
 from prediction_model import attach_predictions
 from insight_engine import build_insights
+from head_to_head import collect
 
 URL = "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx"
 STANDINGS_URL = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
@@ -168,6 +169,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", help="YYYY-MM-DD, default Korea today")
     parser.add_argument("--fixture", help="Local HTML for offline tests")
+    parser.add_argument("--skip-head-to-head", action="store_true")
     args = parser.parse_args()
 
     today = (
@@ -176,6 +178,13 @@ def main():
         else dt.datetime.now(ZoneInfo("Asia/Seoul")).date()
     )
     path = ROOT / "data" / "today.json"
+
+    # Season data updates independently, even if today's schedule fails.
+    if not args.fixture and not args.skip_head_to_head:
+        try:
+            collect(today, ROOT / "data")
+        except Exception as err:
+            print(f"WARN head-to-head unavailable; previous data preserved: {err}")
 
     try:
         if args.fixture:
