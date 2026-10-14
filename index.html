@@ -53,8 +53,8 @@ const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.cla
 const empty=message=>el('div','empty',message);
 const validYear=()=>{const d=new Date();return Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric'}).format(d));};
 function renderGames(){
- const choice=favorite.value;const games=allGames.filter(g=>choice==='전체'||g.away===choice||g.home===choice);const target=$('matches');target.replaceChildren();
- if(!games.length){target.appendChild(empty(choice==='전체'?'확인된 오늘의 경기 일정이 없습니다.':choice+'의 오늘 경기가 없거나 최신 일정이 확인되지 않았습니다.'));return;}
+ const games=allGames;const target=$('matches');target.replaceChildren();
+ if(!games.length){target.appendChild(empty('확인된 오늘의 경기 일정이 없습니다.'));return;}
  for(const g of games){const card=el('article','game-card');card.appendChild(el('div','game-meta',`${g.time||'시간 미정'} · ${g.venue||'구장 미정'}`));const matchup=el('div','matchup');matchup.append(el('div','team-name',g.away||'원정팀'),el('div','versus','VS'),el('div','team-name',g.home||'홈팀'));card.appendChild(matchup);
  if(g.starting_pitchers){const p=g.starting_pitchers;const pitcher=el('div','game-note','선발투수 · '+(typeof p==='string'?p:JSON.stringify(p)));card.appendChild(pitcher);}
  if(g.lineups){const lu=g.lineups;const status=lu.status==='official'?'공식 확인':'미확정';card.appendChild(el('div','game-note','라인업 · '+status));for(const side of ['away','home']){if(Array.isArray(lu[side]))card.appendChild(el('div','game-note',`${side==='away'?g.away:g.home}: `+lu[side].map((p,i)=>`${i+1}. ${p.name||'이름 미확인'} (${p.position||'-'})`).join(' / ')));}}
@@ -81,7 +81,7 @@ function renderAnalysis(){
  if(analysis&&Array.isArray(analysis.batters)&&analysis.batters.length){b.appendChild(showRecordTable(analysis.batters,[{key:'name',label:'선수'},{key:'pa',label:'타석'},{key:'avg',label:'타율'},{key:'obp',label:'출루율'},{key:'slg',label:'장타율'},{key:'ops',label:'OPS'},{key:'hr',label:'홈런'},{key:'rbi',label:'타점'}]));}else{b.appendChild(el('div','placeholder-title','타자 기록 데이터 연동 준비 중'));b.appendChild(empty('타석·타율·출루율·장타율·OPS·홈런·타점 등 검증된 시즌 기록을 연결할 예정입니다.'));}
  if(analysis&&Array.isArray(analysis.pitchers)&&analysis.pitchers.length){p.appendChild(showRecordTable(analysis.pitchers,[{key:'name',label:'선수'},{key:'ip',label:'이닝'},{key:'era',label:'ERA'},{key:'whip',label:'WHIP'},{key:'so',label:'탈삼진'},{key:'wins',label:'승'},{key:'saves',label:'세이브'},{key:'holds',label:'홀드'}]));}else{p.appendChild(el('div','placeholder-title','투수 기록 데이터 연동 준비 중'));p.appendChild(empty('선발투수와 구원투수를 구분해 이닝·ERA·WHIP·탈삼진·세이브·홀드 등 검증된 시즌 기록을 연결할 예정입니다.'));}
 }
-function updateFavorite(){try{localStorage.setItem('today-baseball-favorite',favorite.value);}catch(e){}renderGames();renderStandings();renderAnalysis();}
+function updateFavorite(){try{localStorage.setItem('today-baseball-favorite',favorite.value);}catch(e){}renderStandings();renderAnalysis();}
 favorite.addEventListener('change',updateFavorite);
 for(const tab of document.querySelectorAll('.tab'))tab.addEventListener('click',()=>{for(const t of document.querySelectorAll('.tab')){const active=t===tab;t.setAttribute('aria-selected',String(active));$('panel-'+t.dataset.tab).hidden=!active;}});
 fetch('./data/today.json?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(d=>{
