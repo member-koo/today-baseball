@@ -17,7 +17,7 @@ from prediction_model import attach_predictions
 from insight_engine import build_insights
 
 URL = "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx"
-STANDINGS_URL = "https://eng.koreabaseball.com/Standings/TeamStandings.aspx"
+STANDINGS_URL = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
 ROOT = Path(__file__).parent
 
 TEAMS = {
@@ -143,14 +143,20 @@ def get_standings(year):
     response.raise_for_status()
     response.encoding = response.apparent_encoding
 
-    selected_year = selected_standings_year(response.text)
-    print(f"DIAG standings_selected_year={selected_year}")
+    soup = BeautifulSoup(response.text, "html.parser")
+    text = soup.get_text(" ", strip=True)
 
-    if selected_year != year:
-        print(
-            "WARN standings year unverified or mismatched; "
-            "not publishing standings"
-        )
+    # The Korean official page states the standings reference date.
+    matches = re.findall(
+        r"(20\d{2})\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일\s*기준",
+        text,
+    )
+
+    verified_years = {int(value) for value in matches}
+    print(f"DIAG standings_verified_years={sorted(verified_years)}")
+
+    if verified_years != {year}:
+        print("WARN standings year unverified; not publishing standings")
         return []
 
     standings = parse_standings(response.text)
