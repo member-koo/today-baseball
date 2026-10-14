@@ -1,10 +1,101 @@
 {
-  "standings": [],
-  "standings_status": "순위 데이터 확인 불가",
+  "standings": [
+    {
+      "rank": 1,
+      "team": "KT",
+      "games": 144,
+      "wins": 90,
+      "losses": 49,
+      "draws": 5,
+      "win_pct": 0.647
+    },
+    {
+      "rank": 2,
+      "team": "삼성",
+      "games": 144,
+      "wins": 83,
+      "losses": 58,
+      "draws": 3,
+      "win_pct": 0.589
+    },
+    {
+      "rank": 3,
+      "team": "KIA",
+      "games": 144,
+      "wins": 79,
+      "losses": 63,
+      "draws": 2,
+      "win_pct": 0.556
+    },
+    {
+      "rank": 4,
+      "team": "LG",
+      "games": 144,
+      "wins": 78,
+      "losses": 65,
+      "draws": 1,
+      "win_pct": 0.545
+    },
+    {
+      "rank": 5,
+      "team": "두산",
+      "games": 144,
+      "wins": 73,
+      "losses": 66,
+      "draws": 5,
+      "win_pct": 0.525
+    },
+    {
+      "rank": 6,
+      "team": "SSG",
+      "games": 144,
+      "wins": 65,
+      "losses": 74,
+      "draws": 5,
+      "win_pct": 0.468
+    },
+    {
+      "rank": 7,
+      "team": "롯데",
+      "games": 144,
+      "wins": 64,
+      "losses": 77,
+      "draws": 3,
+      "win_pct": 0.454
+    },
+    {
+      "rank": 8,
+      "team": "NC",
+      "games": 144,
+      "wins": 64,
+      "losses": 78,
+      "draws": 2,
+      "win_pct": 0.451
+    },
+    {
+      "rank": 9,
+      "team": "한화",
+      "games": 144,
+      "wins": 57,
+      "losses": 83,
+      "draws": 4,
+      "win_pct": 0.407
+    },
+    {
+      "rank": 10,
+      "team": "키움",
+      "games": 144,
+      "wins": 50,
+      "losses": 90,
+      "draws": 4,
+      "win_pct": 0.357
+    }
+  ],
+  "standings_status": "2026년 KBO 공식 순위 확인",
   "status": "KBO 공식 경기 일정 확인 · 라인업은 출처 확인 시 표시",
   "title": "2026-10-14 KBO 경기 일정",
   "game_date": "2026-10-14",
-  "updated_at": "2026-10-14T17:12+09:00",
+  "updated_at": "2026-10-14T17:20+09:00",
   "source": "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx",
   "games": [
     {
