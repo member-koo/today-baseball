@@ -1,4 +1,4 @@
-"""Fetch KBO games from the official English daily schedule."""
+"""Fetch verified KBO schedule data; preserve existing data on failure."""
 import argparse
 import datetime as dt
 import json
@@ -19,64 +19,53 @@ from insight_engine import build_insights
 URL = "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx"
 ROOT = Path(__file__).parent
 
-TEAM_NAMES = {
-    "KIA": "KIA",
-    "HANWHA": "한화",
-    "LG": "LG",
-    "DOOSAN": "두산",
-    "SAMSUNG": "삼성",
-    "LOTTE": "롯데",
-    "SSG": "SSG",
-    "NC": "NC",
-    "KT": "KT",
-    "KIWOOM": "키움",
+TEAMS = {
+    "KIA": "KIA", "한화": "한화", "HANWHA": "한화",
+    "LG": "LG", "두산": "두산", "DOOSAN": "두산",
+    "삼성": "삼성", "SAMSUNG": "삼성",
+    "롯데": "롯데", "LOTTE": "롯데",
+    "SSG": "SSG", "NC": "NC", "KT": "KT",
+    "키움": "키움", "KIWOOM": "키움",
 }
 VENUES = {
-    "JAMSIL": "잠실",
-    "GOCHEOKSKY": "고척",
-    "MUNHAK": "문학",
-    "SUWON": "수원",
-    "DAEJEON": "대전",
-    "GWANGJU": "광주",
-    "DAEGU": "대구",
-    "SAJIK": "사직",
-    "CHANGWON": "창원",
-    "ULSAN": "울산",
-    "POHANG": "포항",
-    "CHEONGJU": "청주",
+    "JAMSIL": "잠실", "GOCHEOKSKY": "고척",
+    "MUNHAK": "문학", "SUWON": "수원",
+    "DAEJEON": "대전", "GWANGJU": "광주",
+    "DAEGU": "대구", "SAJIK": "사직",
+    "CHANGWON": "창원", "ULSAN": "울산",
+    "POHANG": "포항", "CHEONGJU": "청주",
 }
-DATE_RE = re.compile(r"\b(\d{1,2})\.(\d{1,2})\s*\([A-Za-z]+\)")
+KOREAN_VENUES = set(VENUES.values())
+DATE_RE = re.compile(r"(?<!\d)(\d{1,2})\.(\d{1,2})(?:\([^)]*\))?")
 TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b")
 MONTH_RE = re.compile(r"\b(20\d{2})\s*\.\s*(\d{1,2})\b")
+TEAM_RE = re.compile(
+    r"(?<![A-Za-z가-힣])("
+    + "|".join(re.escape(x) for x in sorted(TEAMS, key=len, reverse=True))
+    + r")(?![A-Za-z가-힣])",
+    re.IGNORECASE,
+)
 
 
 def extract(html, target):
     soup = BeautifulSoup(html, "html.parser")
-    page_text = soup.get_text(" ", strip=True)
-    month_matches = MONTH_RE.findall(page_text)
-
-    # Do not silently publish another month's schedule.
-    if not any(
-        int(year) == target.year and int(month) == target.month
-        for year, month in month_matches
-    ):
-        raise ValueError(
-            f"요청한 {target.year}년 {target.month}월 일정표를 확인하지 못했습니다."
-        )
-
     games = []
-    active_date = None
 
     for table in soup.select("table"):
+        active_date = None
+
         for tr in table.select("tr"):
             cells = tr.find_all(["th", "td"], recursive=False)
             if not cells:
                 continue
 
-            values = [cell.get_text(" ", strip=True) for cell in cells]
-            joined = " ".join(values)
-            date_match = DATE_RE.search(joined)
+            values = [c.get_text(" ", strip=True) for c in cells]
+            if not values:
+                continue
 
+            # Dates may appear once for several consecutive games.
+            first = values[0]
+            date_match = DATE_RE.search(first)
             if date_match:
                 active_date = (
                     int(date_match.group(1)),
@@ -86,26 +75,35 @@ def extract(html, target):
             if active_date != (target.month, target.day):
                 continue
 
+            joined = " ".join(values)
             time_match = TIME_RE.search(joined)
             if not time_match:
                 continue
 
-            # Team names must appear as distinct tokens.
-            tokens = re.findall(r"[A-Za-z]+", joined.upper())
-            teams = [token for token in tokens if token in TEAM_NAMES]
+            names = [
+                TEAMS[m.group(1).upper()]
+                if m.group(1).upper() in TEAMS
+                else TEAMS[m.group(1)]
+                for m in TEAM_RE.finditer(joined)
+            ]
 
-            if len(teams) != 2 or teams[0] == teams[1]:
+            if len(names) != 2 or names[0] == names[1]:
                 continue
 
-            venue = next(
-                (VENUES[token] for token in tokens if token in VENUES),
-                "미확인",
-            )
+            venue = "미확인"
+            for value in values:
+                upper = value.upper().strip()
+                if upper in VENUES:
+                    venue = VENUES[upper]
+                    break
+                if value.strip() in KOREAN_VENUES:
+                    venue = value.strip()
+                    break
 
             game = {
                 "time": time_match.group(),
-                "away": TEAM_NAMES[teams[0]],
-                "home": TEAM_NAMES[teams[1]],
+                "away": names[0],
+                "home": names[1],
                 "venue": venue,
                 "starting_pitchers": None,
                 "lineups": None,
@@ -129,7 +127,6 @@ def main():
         if args.date
         else dt.datetime.now(ZoneInfo("Asia/Seoul")).date()
     )
-
     path = ROOT / "data" / "today.json"
 
     try:
@@ -147,17 +144,27 @@ def main():
             html = response.text
             source = response.url
 
+            # A valid page for a different month must not be published.
+            page_text = BeautifulSoup(html, "html.parser").get_text(
+                " ", strip=True
+            )
+            months = MONTH_RE.findall(page_text)
+            if months and not any(
+                int(year) == today.year and int(month) == today.month
+                for year, month in months
+            ):
+                raise ValueError("공식 일정표의 연도 또는 월이 다릅니다.")
+
         games = extract(html, today)
 
-        print(f"DIAG date={today.isoformat()}")
+        print(f"DIAG requested_date={today.isoformat()}")
         print(f"DIAG source={source}")
         print(f"DIAG games_found={len(games)}")
 
         if not games:
             raise ValueError(
-                "해당 날짜의 경기 행을 확인하지 못했습니다. "
-                "경기 없음과 수집 오류를 아직 구분할 수 없어 "
-                "기존 데이터를 보존합니다."
+                "확인된 경기 행이 없습니다. 휴식일인지 수집 오류인지 "
+                "확인할 수 없어 기존 데이터를 보존합니다."
             )
 
         validate_games(games)
@@ -170,9 +177,7 @@ def main():
 
         try:
             attach_predictions(
-                games,
-                today,
-                ROOT / "data" / "team_stats.json",
+                games, today, ROOT / "data" / "team_stats.json"
             )
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as err:
             print(f"WARN prediction unavailable: {err}")
@@ -185,18 +190,16 @@ def main():
 
         try:
             if not args.fixture:
-                response = requests.get(
+                sr = requests.get(
                     "https://www.koreabaseball.com/",
                     timeout=25,
                     headers={"User-Agent": "Mozilla/5.0"},
                 )
-                response.raise_for_status()
-                response.encoding = response.apparent_encoding
-                standings = parse_standings(response.text)
-
+                sr.raise_for_status()
+                sr.encoding = sr.apparent_encoding
+                standings = parse_standings(sr.text)
                 if standings:
                     standings_status = "KBO 공식 순위 확인"
-
         except requests.RequestException as err:
             print(f"WARN standings unavailable: {err}")
 
@@ -212,14 +215,13 @@ def main():
             "source": source,
             "games": games,
             "note": (
-                "경기 일정은 KBO 공식 사이트를 기준으로 합니다. "
-                "예측은 검증된 팀 기록이 있을 때만 표시합니다. "
-                "포스트시즌 조건부 경기는 실제 개최 여부를 별도로 확인해야 합니다."
+                "일정은 KBO 공식 자료를 기준으로 합니다. "
+                "예측은 검증된 기록이 있을 때만 표시합니다. "
+                "포스트시즌 조건부 경기는 개최 여부를 별도로 확인해야 합니다."
             ),
         }
 
         check = assess(result)
-
         if not check["publishable"]:
             raise ValueError(check["reason"])
 
@@ -227,11 +229,9 @@ def main():
             json.dumps(result, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-
         print(f"OK {today}: {len(games)} games")
 
     except Exception as exc:
-        # Never overwrite the last valid data after a failed fetch.
         print(f"ERROR: {exc}")
         raise SystemExit(1)
 
