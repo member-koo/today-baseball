@@ -17,6 +17,7 @@ from prediction_model import attach_predictions
 from insight_engine import build_insights
 
 URL = "https://eng.koreabaseball.com/Schedule/DailySchedule.aspx"
+STANDINGS_URL = "https://eng.koreabaseball.com/Standings/TeamStandings.aspx"
 ROOT = Path(__file__).parent
 
 TEAMS = {
@@ -63,7 +64,6 @@ def extract(html, target):
             if not values:
                 continue
 
-            # Dates may appear once for several consecutive games.
             first = values[0]
             date_match = DATE_RE.search(first)
             if date_match:
@@ -116,6 +116,48 @@ def extract(html, target):
     return games
 
 
+def selected_standings_year(html):
+    """Return the explicitly selected season, never infer from a year list."""
+    soup = BeautifulSoup(html, "html.parser")
+    years = set()
+
+    for option in soup.select("select option[selected]"):
+        value = option.get("value", "").strip()
+        label = option.get_text(" ", strip=True)
+        for candidate in (value, label):
+            if re.fullmatch(r"20\d{2}", candidate):
+                years.add(int(candidate))
+
+    if len(years) == 1:
+        return years.pop()
+
+    return None
+
+
+def get_standings(year):
+    response = requests.get(
+        STANDINGS_URL,
+        timeout=25,
+        headers={"User-Agent": "Mozilla/5.0"},
+    )
+    response.raise_for_status()
+    response.encoding = response.apparent_encoding
+
+    selected_year = selected_standings_year(response.text)
+    print(f"DIAG standings_selected_year={selected_year}")
+
+    if selected_year != year:
+        print(
+            "WARN standings year unverified or mismatched; "
+            "not publishing standings"
+        )
+        return []
+
+    standings = parse_standings(response.text)
+    print(f"DIAG standings_found={len(standings)}")
+    return standings
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", help="YYYY-MM-DD, default Korea today")
@@ -144,16 +186,18 @@ def main():
             html = response.text
             source = response.url
 
-            # A valid page for a different month must not be published.
-            page_text = BeautifulSoup(html, "html.parser").get_text(
-                " ", strip=True
-            )
+            page_text = BeautifulSoup(
+                html, "html.parser"
+            ).get_text(" ", strip=True)
             months = MONTH_RE.findall(page_text)
+
             if months and not any(
                 int(year) == today.year and int(month) == today.month
                 for year, month in months
             ):
-                raise ValueError("공식 일정표의 연도 또는 월이 다릅니다.")
+                raise ValueError(
+                    "공식 일정표의 연도 또는 월이 다릅니다."
+                )
 
         games = extract(html, today)
 
@@ -179,7 +223,9 @@ def main():
             attach_predictions(
                 games, today, ROOT / "data" / "team_stats.json"
             )
-        except (ValueError, KeyError, TypeError, json.JSONDecodeError) as err:
+        except (
+            ValueError, KeyError, TypeError, json.JSONDecodeError
+        ) as err:
             print(f"WARN prediction unavailable: {err}")
 
         for game in games:
@@ -188,25 +234,23 @@ def main():
         standings = []
         standings_status = "순위 데이터 확인 불가"
 
-        try:
-            if not args.fixture:
-                sr = requests.get(
-                    "https://www.koreabaseball.com/",
-                    timeout=25,
-                    headers={"User-Agent": "Mozilla/5.0"},
-                )
-                sr.raise_for_status()
-                sr.encoding = sr.apparent_encoding
-                standings = parse_standings(sr.text)
+        if not args.fixture:
+            try:
+                standings = get_standings(today.year)
                 if standings:
-                    standings_status = "KBO 공식 순위 확인"
-        except requests.RequestException as err:
-            print(f"WARN standings unavailable: {err}")
+                    standings_status = (
+                        f"{today.year}년 KBO 공식 순위 확인"
+                    )
+            except requests.RequestException as err:
+                print(f"WARN standings unavailable: {err}")
 
         result = {
             "standings": standings,
             "standings_status": standings_status,
-            "status": "KBO 공식 경기 일정 확인 · 라인업은 출처 확인 시 표시",
+            "status": (
+                "KBO 공식 경기 일정 확인 · "
+                "라인업은 출처 확인 시 표시"
+            ),
             "title": f"{today.isoformat()} KBO 경기 일정",
             "game_date": today.isoformat(),
             "updated_at": dt.datetime.now(
@@ -217,7 +261,8 @@ def main():
             "note": (
                 "일정은 KBO 공식 자료를 기준으로 합니다. "
                 "예측은 검증된 기록이 있을 때만 표시합니다. "
-                "포스트시즌 조건부 경기는 개최 여부를 별도로 확인해야 합니다."
+                "포스트시즌 조건부 경기는 개최 여부를 "
+                "별도로 확인해야 합니다."
             ),
         }
 
