@@ -16,10 +16,12 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
-      - run: python update_data.py
+      - run: python head_to_head.py
+      - run: python update_data.py --skip-head-to-head
+        continue-on-error: true
       - name: Commit verified data
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/today.json
+          git add data/today.json data/head_to_head.json data/head_to_head_sources.json
           git diff --cached --quiet || (git commit -m 'Update verified KBO schedule' && git push)
