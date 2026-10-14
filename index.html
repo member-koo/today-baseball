@@ -1,96 +1,1110 @@
+
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b1220">
-<link rel="manifest" href="manifest.webmanifest">
-<title>오늘의 야구 한판</title>
-<style>
-:root{color-scheme:dark;--bg:#0b1220;--panel:#182539;--panel2:#202f45;--line:#33465f;--text:#eef3fb;--muted:#a5b5cc;--accent:#f1c66a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,'Malgun Gothic',sans-serif;line-height:1.55}main{max-width:920px;margin:auto;padding:25px 16px 55px}h1{font-size:clamp(25px,5vw,35px);margin:0 0 5px}h2{font-size:19px;margin:0 0 14px}p{margin:10px 0}.muted{color:var(--muted)}.small{font-size:13px}.eyebrow{font-size:12px;color:var(--accent);font-weight:800;letter-spacing:.08em}.lead{margin-top:0}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:21px;margin:17px 0;box-shadow:0 8px 24px #00000012}.section-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.tag{display:inline-block;background:#30435d;border-radius:20px;padding:6px 11px;font-size:12px;color:#e4edfb}.tag.ok{background:#193f36;color:#a4f1d0}.tag.warn{background:#51402c;color:#ffdfa2}.favorite-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 0}.favorite-wrap label{font-weight:700}select{background:#25364c;color:white;padding:11px 14px;border:1px solid #526782;border-radius:10px;font:inherit;min-width:160px}.game-list{display:grid;gap:12px;margin-top:18px}.game-card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px}.game-meta{font-size:13px;color:var(--muted);margin-bottom:12px}.matchup{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center}.team-name{font-size:clamp(20px,5vw,27px);font-weight:800}.versus{font-size:12px;color:var(--muted);font-weight:700}.game-note{margin-top:13px;border-top:1px solid var(--line);padding-top:11px;font-size:13px;color:var(--muted)}.prediction{margin-top:10px;font-size:13px;color:#f7dfa6}.empty{background:#213047;border:1px dashed #455974;border-radius:12px;padding:16px;color:var(--muted);font-size:14px}.table-scroll{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;white-space:nowrap}th{color:var(--muted);font-size:12px;font-weight:600;background:#202e43}th,td{padding:11px 9px;border-bottom:1px solid #32435a;text-align:right}th:nth-child(2),td:nth-child(2){text-align:left}td{font-size:14px}tbody tr:last-child td{border-bottom:0}tbody tr.highlight{background:#514527}tbody tr.highlight td:nth-child(2){font-weight:900;color:#ffe29a}.favorite-star{color:#ffdb86;margin-right:5px}.tabbar{display:flex;gap:7px;background:#101b2b;border-radius:12px;padding:5px;margin:15px 0}.tab{flex:1;min-width:0;padding:11px 5px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-weight:800;cursor:pointer}.tab[aria-selected="true"]{background:#3a506e;color:#fff}.tab-panel[hidden]{display:none}.placeholder-title{font-size:15px;font-weight:800;margin-bottom:6px}.footer-note{font-size:12px;color:var(--muted);margin-top:14px}.insight-list{margin:0;padding-left:20px}.insight-list li{margin:8px 0}button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}@media(max-width:560px){main{padding:20px 12px 42px}.panel{padding:16px;border-radius:15px}th,td{padding:10px 6px;font-size:12px}th{font-size:11px}.game-card{padding:13px}.favorite-wrap{align-items:stretch}.favorite-wrap select{flex:1}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>오늘의 야구 한판</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0b1220;
+      color: #edf2f7;
+      font-family: system-ui, "Malgun Gothic", sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+
+    h1, h2, h3, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: clamp(25px, 4vw, 34px);
+      margin-bottom: 5px;
+    }
+
+    h2 {
+      font-size: 23px;
+      margin-bottom: 18px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .muted {
+      color: #a9bad0;
+    }
+
+    .small {
+      font-size: 13px;
+    }
+
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      color: #80bfff;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .site-header p {
+      margin-bottom: 0;
+    }
+
+    .favorite-control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 155px;
+    }
+
+    .favorite-control label {
+      font-size: 13px;
+      color: #a9bad0;
+      font-weight: 700;
+    }
+
+    select {
+      background: #25364c;
+      color: white;
+      border: 1px solid #4b627f;
+      border-radius: 11px;
+      padding: 11px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .panel {
+      background: #192638;
+      border: 1px solid #30425a;
+      border-radius: 20px;
+      padding: 26px;
+      margin: 20px 0;
+    }
+
+    .panel-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #30445f;
+      color: #dbeafe;
+      border-radius: 30px;
+      padding: 7px 13px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .tag.ok {
+      background: #134638;
+      color: #b2f5d1;
+    }
+
+    .game-card {
+      background: #213149;
+      border: 1px solid #3b5270;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 15px 0;
+    }
+
+    .game-meta {
+      color: #a9bad0;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+
+    .game-teams {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .team-name {
+      font-size: clamp(20px, 4vw, 29px);
+      font-weight: 800;
+    }
+
+    .versus {
+      font-size: 15px;
+      font-weight: 800;
+      color: #87a2c4;
+    }
+
+    .game-note {
+      margin-top: 15px;
+      border-top: 1px solid #40516a;
+      padding-top: 12px;
+      font-size: 13px;
+      color: #b4c3d7;
+    }
+
+    .empty-state {
+      background: #213149;
+      border: 1px dashed #425a77;
+      border-radius: 14px;
+      padding: 20px;
+      color: #b4c3d7;
+      font-size: 14px;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      background: #233249;
+      color: #b6c7df;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 13px 10px;
+      white-space: nowrap;
+    }
+
+    td {
+      border-bottom: 1px solid #35475f;
+      padding: 15px 10px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      text-align: left;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr.favorite-row {
+      background: #34455e;
+    }
+
+    .favorite-row td:nth-child(2) {
+      color: #ffdc81;
+      font-weight: 800;
+    }
+
+    .favorite-star {
+      color: #ffdc81;
+      margin-right: 5px;
+    }
+
+    .win-pct {
+      font-weight: 800;
+      color: #a4d0ff;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .tab-button {
+      flex: 1;
+      background: #25364c;
+      color: #c2d0e3;
+      border: 1px solid #3b5270;
+      border-radius: 10px;
+      padding: 12px 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab-button.active {
+      background: #3975c5;
+      border-color: #5b9ef2;
+      color: white;
+    }
+
+    .tab-content {
+      min-height: 110px;
+    }
+
+    .analysis-description {
+      color: #b4c3d7;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .notice {
+      background: #233249;
+      border-radius: 12px;
+      padding: 15px;
+      color: #a9bad0;
+      font-size: 14px;
+    }
+
+    .footer-note {
+      font-size: 13px;
+      color: #8ea4bf;
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        padding: 20px 12px 40px;
+      }
+
+      .site-header {
+        align-items: flex-start;
+      }
+
+      .favorite-control {
+        width: 150px;
+      }
+
+      .panel {
+        padding: 18px 14px;
+        border-radius: 16px;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      table {
+        font-size: 13px;
+      }
+
+      th, td {
+        padding: 12px 7px;
+      }
+
+      .game-card {
+        padding: 16px 12px;
+      }
+
+      .tab-button {
+        font-size: 13px;
+      }
+    }
+  </style>
 </head>
+
 <body>
 <main>
-<header><div class="eyebrow">KBO BASEBALL PREVIEW</div><h1>⚾ 오늘의 야구 한판</h1><p class="muted lead">10개 구단 경기 일정과 관심팀 시즌 기록을 한눈에</p></header>
-<section class="panel" aria-labelledby="today-title">
-  <div class="section-top"><h2 id="today-title">오늘의 경기</h2><span id="status" class="tag">데이터 확인 중</span></div>
-  <p id="headline" class="muted">경기 정보를 불러오는 중입니다.</p>
-  <div class="favorite-wrap"><label for="favorite">관심팀</label><select id="favorite"><option value="전체">전체 경기</option><option value="KIA">KIA</option><option value="한화">한화</option><option value="LG">LG</option><option value="두산">두산</option><option value="삼성">삼성</option><option value="롯데">롯데</option><option value="SSG">SSG</option><option value="NC">NC</option><option value="KT">KT</option><option value="키움">키움</option></select></div>
-  <div id="matches" class="game-list" aria-live="polite"></div>
-  <div id="lineups"></div>
-  <p id="updated" class="muted small"></p>
-</section>
-<section class="panel" aria-labelledby="standings-title">
-  <div class="section-top"><h2 id="standings-title">2026 KBO 시즌 순위</h2><span id="standings-label" class="tag">공식 기록 확인 중</span></div>
-  <div id="standings" aria-live="polite"><p class="muted">공식 순위를 불러오는 중입니다.</p></div>
-  <p class="footer-note">승률은 무승부를 제외한 승 ÷ (승 + 패) 기준입니다. 관심팀을 선택하면 해당 구단이 강조됩니다.</p>
-</section>
-<section class="panel" aria-labelledby="analysis-title">
-  <div class="section-top"><h2 id="analysis-title">관심팀 분석</h2><span id="analysis-team" class="tag">팀 선택 대기</span></div>
-  <div class="tabbar" role="tablist" aria-label="관심팀 기록 종류">
-    <button class="tab" id="tab-h2h" type="button" role="tab" aria-selected="true" aria-controls="panel-h2h" data-tab="h2h">상대전적</button>
-    <button class="tab" id="tab-batters" type="button" role="tab" aria-selected="false" aria-controls="panel-batters" data-tab="batters">타자</button>
-    <button class="tab" id="tab-pitchers" type="button" role="tab" aria-selected="false" aria-controls="panel-pitchers" data-tab="pitchers">투수</button>
-  </div>
-  <div class="tab-panel" id="panel-h2h" role="tabpanel" aria-labelledby="tab-h2h"><div id="h2h-content"></div></div>
-  <div class="tab-panel" id="panel-batters" role="tabpanel" aria-labelledby="tab-batters" hidden><div id="batters-content"></div></div>
-  <div class="tab-panel" id="panel-pitchers" role="tabpanel" aria-labelledby="tab-pitchers" hidden><div id="pitchers-content"></div></div>
-</section>
-<section class="panel" aria-labelledby="insights-title"><h2 id="insights-title">오늘의 관전 포인트</h2><div id="insights" class="muted">검증된 경기 분석을 확인 중입니다.</div></section>
-<section class="panel" aria-labelledby="info-title"><h2 id="info-title">데이터 안내</h2><p class="muted small">경기 일정과 순위는 확인된 자료만 표시합니다. 상대전적과 선수 기록은 별도 공식 기록 데이터 연동 후 공개합니다. 선발·라인업·예측도 검증되지 않은 값은 표시하지 않습니다.</p></section>
+
+  <!-- 사이트 제목과 관심팀 설정 -->
+  <header class="site-header">
+    <div>
+      <div class="eyebrow">KBO BASEBALL PREVIEW</div>
+      <h1>⚾ 오늘의 야구 한판</h1>
+      <p class="muted small">
+        KBO 경기 일정과 관심팀 시즌 기록을 한눈에
+      </p>
+    </div>
+
+    <div class="favorite-control">
+      <label for="favorite">관심팀 설정</label>
+      <select id="favorite">
+        <option value="전체">전체</option>
+        <option value="KIA">KIA</option>
+        <option value="한화">한화</option>
+        <option value="LG">LG</option>
+        <option value="두산">두산</option>
+        <option value="삼성">삼성</option>
+        <option value="롯데">롯데</option>
+        <option value="SSG">SSG</option>
+        <option value="NC">NC</option>
+        <option value="KT">KT</option>
+        <option value="키움">키움</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- 오늘의 경기 -->
+  <section class="panel">
+    <div class="panel-heading">
+      <h2>오늘의 경기</h2>
+      <span id="status" class="tag">데이터 확인 중</span>
+    </div>
+
+    <p id="headline" class="muted">
+      경기 정보를 불러오는 중입니다.
+    </p>
+
+    <div id="matches">
+      <div class="empty-state">
+        오늘의 경기 데이터를 확인하고 있습니다.
+      </div>
+    </div>
+
+    <div id="lineups"></div>
+
+    <p id="updated" class="muted small"
+       style="margin-top:20px;margin-bottom:0"></p>
+  </section>
+
+  <!-- 시즌 순위 -->
+  <section class="panel">
+    <div class="panel-heading">
+      <h2 id="standings-title">KBO 시즌 순위</h2>
+      <span class="tag">10개 구단</span>
+    </div>
+
+    <div id="standings" class="table-scroll">
+      공식 순위 확인 중
+    </div>
+  </section>
+
+  <!-- 관심팀 분석 -->
+  <section class="panel">
+    <div class="panel-heading">
+      <h2 id="analysis-title">관심팀 분석</h2>
+      <span class="tag">시즌 누적 기록</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-button active"
+              data-tab="matchup"
+              type="button">
+        상대전적
+      </button>
+
+      <button class="tab-button"
+              data-tab="batters"
+              type="button">
+        타자
+      </button>
+
+      <button class="tab-button"
+              data-tab="pitchers"
+              type="button">
+        투수
+      </button>
+    </div>
+
+    <div id="analysis-content" class="tab-content"></div>
+  </section>
+
+  <!-- 관전 포인트 -->
+  <section class="panel">
+    <h2>오늘의 관전 포인트</h2>
+
+    <div id="insights" class="muted">
+      공식 기록을 확인하고 있습니다.
+    </div>
+  </section>
+
+  <p class="footer-note">
+    공식적으로 확인된 자료만 표시합니다.
+    확인되지 않은 승패, 선수 기록, 예상 점수는 생성하지 않습니다.
+  </p>
+
 </main>
+
 <script>
-(()=>{
-'use strict';
-const $=id=>document.getElementById(id);
-const favorite=$('favorite');
-const teams=['KIA','한화','LG','두산','삼성','롯데','SSG','NC','KT','키움'];
-let data=null,allGames=[],standings=[];
-try{const saved=localStorage.getItem('today-baseball-favorite');if([...teams,'전체'].includes(saved))favorite.value=saved;}catch(e){}
-const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
-const empty=message=>el('div','empty',message);
-const validYear=()=>{const d=new Date();return Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric'}).format(d));};
-function renderGames(){
- const games=allGames;const target=$('matches');target.replaceChildren();
- if(!games.length){target.appendChild(empty('확인된 오늘의 경기 일정이 없습니다.'));return;}
- for(const g of games){const card=el('article','game-card');card.appendChild(el('div','game-meta',`${g.time||'시간 미정'} · ${g.venue||'구장 미정'}`));const matchup=el('div','matchup');matchup.append(el('div','team-name',g.away||'원정팀'),el('div','versus','VS'),el('div','team-name',g.home||'홈팀'));card.appendChild(matchup);
- if(g.starting_pitchers){const p=g.starting_pitchers;const pitcher=el('div','game-note','선발투수 · '+(typeof p==='string'?p:JSON.stringify(p)));card.appendChild(pitcher);}
- if(g.lineups){const lu=g.lineups;const status=lu.status==='official'?'공식 확인':'미확정';card.appendChild(el('div','game-note','라인업 · '+status));for(const side of ['away','home']){if(Array.isArray(lu[side]))card.appendChild(el('div','game-note',`${side==='away'?g.away:g.home}: `+lu[side].map((p,i)=>`${i+1}. ${p.name||'이름 미확인'} (${p.position||'-'})`).join(' / ')));}}
- if(g.prediction){const p=g.prediction;card.appendChild(el('div','prediction',`예상 ${g.away} ${p.away_score}:${p.home_score} ${g.home} · 홈 승률 ${p.home_win_pct}% · 기록 기준 ${p.stats_as_of||'미확인'}`));}
- if(Array.isArray(g.insights)&&g.insights.length)card.appendChild(el('div','game-note',g.insights.join(' · ')));target.appendChild(card);
- }
-}
-function renderStandings(){
- const target=$('standings');target.replaceChildren();if(standings.length!==10){target.appendChild(empty('10개 구단 순위 데이터 미확인 · 추정값은 표시하지 않습니다.'));$('standings-label').textContent='순위 미확인';return;}
- $('standings-label').textContent='10개 구단';const wrap=el('div','table-scroll');const table=el('table');const thead=el('thead');const hr=el('tr');for(const title of ['순위','구단','경기','승','패','무','승률'])hr.appendChild(el('th','',title));thead.appendChild(hr);table.appendChild(thead);const tbody=el('tbody');
- for(const row of [...standings].sort((a,b)=>a.rank-b.rank)){const tr=el('tr',row.team===favorite.value?'highlight':'');const values=[row.rank,row.team,row.games,row.wins,row.losses,row.draws,Number(row.win_pct).toFixed(3)];values.forEach((v,i)=>{const td=el('td','',v);if(i===1&&row.team===favorite.value)td.prepend(el('span','favorite-star','★ '));tr.appendChild(td);});tbody.appendChild(tr);}table.appendChild(tbody);wrap.appendChild(table);target.appendChild(wrap);
-}
-function showRecordTable(rows,columns){const wrap=el('div','table-scroll');const table=el('table');const head=el('tr');columns.forEach(c=>head.appendChild(el('th','',c.label)));const thead=el('thead');thead.appendChild(head);table.appendChild(thead);const tbody=el('tbody');for(const item of rows){const tr=el('tr');for(const c of columns){const value=item[c.key];tr.appendChild(el('td','',value===null||value===undefined||value===''?'—':value));}tbody.appendChild(tr);}table.appendChild(tbody);wrap.appendChild(table);return wrap;}
-function renderAnalysis(){
- const team=favorite.value;const selected=team!=='전체';$('analysis-team').textContent=selected?team+' · '+validYear()+' 시즌':'관심팀 미선택';
- const h=$('h2h-content'),b=$('batters-content'),p=$('pitchers-content');h.replaceChildren();b.replaceChildren();p.replaceChildren();
- if(!selected){for(const target of [h,b,p])target.appendChild(empty('위에서 관심팀을 선택하면 해당 구단 기록을 볼 수 있습니다.'));return;}
- // 아래 데이터는 별도 검증된 시즌 기록 파일이 연동된 경우에만 표시합니다.
- const analysis=data&&data.team_analysis&&data.team_analysis[team];
- if(analysis&&Array.isArray(analysis.head_to_head)&&analysis.head_to_head.length){
-   h.appendChild(el('p','muted small','선택 팀 기준 해당 연도 누적 상대전적 · 승패 흐름은 시즌 첫 맞대결부터 순서대로 표시'));
-   for(const r of analysis.head_to_head){const card=el('div','game-card');card.appendChild(el('div','placeholder-title',`${team} vs ${r.opponent||'상대팀'}`));const record=[r.wins,r.losses,r.draws].every(v=>Number.isInteger(v))?`${r.wins}승 ${r.losses}패 ${r.draws}무`:'전적 미확인';const avg=Number.isFinite(Number(r.batting_avg))&&r.batting_avg!==null?Number(r.batting_avg).toFixed(3):'—';const era=Number.isFinite(Number(r.era))&&r.era!==null?Number(r.era).toFixed(2):'—';card.appendChild(el('div','small',`${record} · 상대 타율 ${avg} · 상대 ERA ${era}`));if(Array.isArray(r.results)&&r.results.length)card.appendChild(el('div','game-note','시즌 전체 흐름 · '+r.results.join(' · ')));h.appendChild(card);}
- }else{h.appendChild(el('div','placeholder-title','시즌 상대전적 데이터 연동 준비 중'));h.appendChild(empty('상대팀별 누적 승·패·무, 타율, ERA, 해당 연도 전체 승패 흐름을 제공할 예정입니다. 최근 5경기 별도 표시는 없습니다.'));}
- if(analysis&&Array.isArray(analysis.batters)&&analysis.batters.length){b.appendChild(showRecordTable(analysis.batters,[{key:'name',label:'선수'},{key:'pa',label:'타석'},{key:'avg',label:'타율'},{key:'obp',label:'출루율'},{key:'slg',label:'장타율'},{key:'ops',label:'OPS'},{key:'hr',label:'홈런'},{key:'rbi',label:'타점'}]));}else{b.appendChild(el('div','placeholder-title','타자 기록 데이터 연동 준비 중'));b.appendChild(empty('타석·타율·출루율·장타율·OPS·홈런·타점 등 검증된 시즌 기록을 연결할 예정입니다.'));}
- if(analysis&&Array.isArray(analysis.pitchers)&&analysis.pitchers.length){p.appendChild(showRecordTable(analysis.pitchers,[{key:'name',label:'선수'},{key:'ip',label:'이닝'},{key:'era',label:'ERA'},{key:'whip',label:'WHIP'},{key:'so',label:'탈삼진'},{key:'wins',label:'승'},{key:'saves',label:'세이브'},{key:'holds',label:'홀드'}]));}else{p.appendChild(el('div','placeholder-title','투수 기록 데이터 연동 준비 중'));p.appendChild(empty('선발투수와 구원투수를 구분해 이닝·ERA·WHIP·탈삼진·세이브·홀드 등 검증된 시즌 기록을 연결할 예정입니다.'));}
-}
-function updateFavorite(){try{localStorage.setItem('today-baseball-favorite',favorite.value);}catch(e){}renderStandings();renderAnalysis();}
-favorite.addEventListener('change',updateFavorite);
-for(const tab of document.querySelectorAll('.tab'))tab.addEventListener('click',()=>{for(const t of document.querySelectorAll('.tab')){const active=t===tab;t.setAttribute('aria-selected',String(active));$('panel-'+t.dataset.tab).hidden=!active;}});
-fetch('./data/today.json?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(d=>{
- data=d;const kst=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());const age=Date.now()-Date.parse(d.updated_at);const fresh=d.game_date===kst&&d.updated_at&&Number.isFinite(age)&&age<10800000&&age>=-300000;
- $('status').textContent=fresh?(d.status||'공식 일정 확인'):'오래된 데이터 · 최신 기록 확인 필요';$('status').className='tag '+(fresh?'ok':'warn');$('headline').textContent=fresh?(d.title||'오늘의 경기'):'현재 경기 프리뷰를 준비 중입니다.';$('updated').textContent='데이터 기준: '+(d.updated_at||'미확인');allGames=fresh&&Array.isArray(d.games)?d.games:[];
- standings=Array.isArray(d.standings)?d.standings:[];$('insights').textContent=fresh?(d.note||'분석 준비 중'):'오늘 확인된 최신 자료가 없어 예측을 제공하지 않습니다.';updateFavorite();
-}).catch(()=>{$('status').textContent='데이터 미연결';$('status').className='tag warn';$('headline').textContent='최신 데이터를 불러오지 못했습니다';$('matches').replaceChildren(empty('데이터 연결을 확인해 주세요.'));$('standings').replaceChildren(empty('순위 데이터를 불러오지 못했습니다.'));renderAnalysis();});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+(function () {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+
+  const TEAM_NAMES = [
+    "KIA", "한화", "LG", "두산", "삼성",
+    "롯데", "SSG", "NC", "KT", "키움"
+  ];
+
+  let data = null;
+  let standings = [];
+  let activeTab = "matchup";
+
+  // 관심팀 설정을 기억합니다.
+  function loadFavorite() {
+    try {
+      const saved = localStorage.getItem("favoriteTeam");
+      return TEAM_NAMES.includes(saved) ? saved : "전체";
+    } catch (error) {
+      return "전체";
+    }
+  }
+
+  function saveFavorite(team) {
+    try {
+      localStorage.setItem("favoriteTeam", team);
+    } catch (error) {
+      // 저장이 차단된 브라우저에서도 화면은 작동합니다.
+    }
+  }
+
+  $("favorite").value = loadFavorite();
+
+  function currentFavorite() {
+    return $("favorite").value;
+  }
+
+  function formatPct(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(3) : "-";
+  }
+
+  function formatNumber(value) {
+    return Number.isFinite(Number(value))
+      ? String(value)
+      : "-";
+  }
+
+  function makeElement(tag, className, text) {
+    const el = document.createElement(tag);
+
+    if (className) {
+      el.className = className;
+    }
+
+    if (text !== undefined && text !== null) {
+      el.textContent = String(text);
+    }
+
+    return el;
+  }
+
+  function getKstDate() {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+
+    const values = {};
+
+    parts.forEach((part) => {
+      values[part.type] = part.value;
+    });
+
+    return [
+      values.year,
+      values.month,
+      values.day
+    ].join("-");
+  }
+
+  // 오늘의 경기는 관심팀과 관계없이 전체 표시합니다.
+  // 데이터가 3시간 지났다는 이유로 경기를 숨기지 않습니다.
+  function renderGames() {
+    const container = $("matches");
+    container.replaceChildren();
+
+    if (!data || !Array.isArray(data.games)) {
+      container.appendChild(
+        makeElement(
+          "div",
+          "empty-state",
+          "경기 데이터를 확인할 수 없습니다."
+        )
+      );
+      return;
+    }
+
+    const games = data.games;
+
+    if (games.length === 0) {
+      container.appendChild(
+        makeElement(
+          "div",
+          "empty-state",
+          "등록된 경기 일정이 없습니다."
+        )
+      );
+      return;
+    }
+
+    games.forEach((game) => {
+      const card = makeElement("article", "game-card");
+
+      const meta = makeElement(
+        "div",
+        "game-meta",
+        (game.time || "시간 미정") +
+        " · " +
+        (game.venue || "구장 미정")
+      );
+
+      const teams = makeElement("div", "game-teams");
+
+      const away = makeElement(
+        "div",
+        "team-name",
+        game.away || "원정팀"
+      );
+
+      const versus = makeElement("div", "versus", "VS");
+
+      const home = makeElement(
+        "div",
+        "team-name",
+        game.home || "홈팀"
+      );
+
+      teams.append(away, versus, home);
+      card.append(meta, teams);
+
+      if (game.starting_pitchers) {
+        const pitchers = game.starting_pitchers;
+
+        if (typeof pitchers === "object") {
+          const awayPitcher = pitchers.away;
+          const homePitcher = pitchers.home;
+
+          const pitcherName = (value) => {
+            if (typeof value === "string") return value;
+            if (value && typeof value === "object") {
+              return value.name || "";
+            }
+            return "";
+          };
+
+          const a = pitcherName(awayPitcher);
+          const h = pitcherName(homePitcher);
+
+          if (a || h) {
+            card.appendChild(
+              makeElement(
+                "div",
+                "game-note",
+                "선발투수 · " +
+                (a || "미확인") +
+                " / " +
+                (h || "미확인")
+              )
+            );
+          }
+        }
+      }
+
+      if (game.prediction) {
+        const prediction = game.prediction;
+
+        if (
+          prediction.away_score !== undefined &&
+          prediction.home_score !== undefined
+        ) {
+          card.appendChild(
+            makeElement(
+              "div",
+              "game-note",
+              "기록 기반 예상 · " +
+              game.away + " " +
+              prediction.away_score + " : " +
+              prediction.home_score + " " +
+              game.home
+            )
+          );
+        }
+      }
+
+      if (
+        Array.isArray(game.insights) &&
+        game.insights.length > 0
+      ) {
+        card.appendChild(
+          makeElement(
+            "div",
+            "game-note",
+            game.insights.join(" · ")
+          )
+        );
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  function renderLineups() {
+    const container = $("lineups");
+    container.replaceChildren();
+
+    if (!data || !Array.isArray(data.games)) {
+      return;
+    }
+
+    data.games.forEach((game) => {
+      const lineups = game.lineups;
+
+      if (!lineups || typeof lineups !== "object") {
+        return;
+      }
+
+      const box = makeElement("div", "game-card");
+
+      const label = lineups.status === "official"
+        ? "공식 확인 라인업"
+        : "예상 라인업 · 공식 미확정";
+
+      box.appendChild(
+        makeElement(
+          "h3",
+          "",
+          game.away + " vs " + game.home + " · " + label
+        )
+      );
+
+      ["away", "home"].forEach((side) => {
+        const players = lineups[side];
+
+        if (!Array.isArray(players)) {
+          return;
+        }
+
+        const team = side === "away"
+          ? game.away
+          : game.home;
+
+        const names = players.map((player, index) => {
+          return (
+            (index + 1) + ". " +
+            (player.name || "미확인") +
+            (player.position
+              ? " (" + player.position + ")"
+              : "")
+          );
+        });
+
+        box.appendChild(
+          makeElement(
+            "p",
+            "small muted",
+            team + " · " + names.join(" / ")
+          )
+        );
+      });
+
+      container.appendChild(box);
+    });
+  }
+
+  function renderStandings() {
+    const container = $("standings");
+    container.replaceChildren();
+
+    if (standings.length !== 10) {
+      container.appendChild(
+        makeElement(
+          "div",
+          "empty-state",
+          "10개 구단 공식 순위 데이터 확인이 필요합니다."
+        )
+      );
+      return;
+    }
+
+    const favorite = currentFavorite();
+
+    const table = document.createElement("table");
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+
+    [
+      "순위", "구단", "경기",
+      "승", "패", "무", "승률"
+    ].forEach((name) => {
+      headRow.appendChild(makeElement("th", "", name));
+    });
+
+    thead.appendChild(headRow);
+
+    const tbody = document.createElement("tbody");
+
+    const sorted = [...standings].sort(
+      (a, b) => Number(a.rank) - Number(b.rank)
+    );
+
+    sorted.forEach((team) => {
+      const row = document.createElement("tr");
+
+      if (team.team === favorite) {
+        row.className = "favorite-row";
+      }
+
+      row.appendChild(
+        makeElement("td", "", formatNumber(team.rank))
+      );
+
+      const nameCell = document.createElement("td");
+
+      if (team.team === favorite) {
+        nameCell.appendChild(
+          makeElement("span", "favorite-star", "★")
+        );
+      }
+
+      nameCell.appendChild(
+        document.createTextNode(team.team || "-")
+      );
+
+      row.appendChild(nameCell);
+
+      [
+        team.games,
+        team.wins,
+        team.losses,
+        team.draws
+      ].forEach((value) => {
+        row.appendChild(
+          makeElement("td", "", formatNumber(value))
+        );
+      });
+
+      row.appendChild(
+        makeElement(
+          "td",
+          "win-pct",
+          formatPct(team.win_pct)
+        )
+      );
+
+      tbody.appendChild(row);
+    });
+
+    table.append(thead, tbody);
+    container.appendChild(table);
+  }
+
+  function renderAnalysis() {
+    const favorite = currentFavorite();
+    const container = $("analysis-content");
+
+    container.replaceChildren();
+
+    $("analysis-title").textContent =
+      favorite === "전체"
+        ? "관심팀 분석"
+        : favorite + " 팀 분석";
+
+    if (favorite === "전체") {
+      container.appendChild(
+        makeElement(
+          "div",
+          "empty-state",
+          "화면 오른쪽 위에서 관심팀을 선택하면 " +
+          "해당 팀의 시즌 분석을 확인할 수 있습니다."
+        )
+      );
+      return;
+    }
+
+    if (activeTab === "matchup") {
+      container.appendChild(
+        makeElement(
+          "p",
+          "analysis-description",
+          favorite +
+          "의 해당 연도 전체 맞대결 기록을 표시합니다. " +
+          "오늘 경기가 없어도 시즌 기록은 유지됩니다."
+        )
+      );
+
+      const table = document.createElement("table");
+
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+
+      [
+        "상대팀",
+        "승-패-무",
+        "타율",
+        "ERA"
+      ].forEach((label) => {
+        headRow.appendChild(makeElement("th", "", label));
+      });
+
+      thead.appendChild(headRow);
+
+      const tbody = document.createElement("tbody");
+
+      TEAM_NAMES
+        .filter((team) => team !== favorite)
+        .forEach((team) => {
+          const row = document.createElement("tr");
+
+          row.appendChild(makeElement("td", "", team));
+
+          ["-", "-", "-"].forEach((value) => {
+            row.appendChild(makeElement("td", "", value));
+          });
+
+          tbody.appendChild(row);
+        });
+
+      table.append(thead, tbody);
+
+      const wrapper = makeElement("div", "table-scroll");
+      wrapper.appendChild(table);
+
+      container.appendChild(wrapper);
+
+      container.appendChild(
+        makeElement(
+          "p",
+          "analysis-description",
+          "시즌 승패 흐름: 해당 연도 첫 맞대결부터 " +
+          "마지막 맞대결까지 승·패·무를 순서대로 표시할 예정입니다."
+        )
+      );
+
+      container.appendChild(
+        makeElement(
+          "div",
+          "notice",
+          "상대팀별 시즌 누적 승패·타율·ERA·전체 승패 흐름은 " +
+          "공식 경기별 기록 수집 기능을 연결한 뒤 표시합니다. " +
+          "현재 '-'는 미확인 데이터입니다."
+        )
+      );
+
+      return;
+    }
+
+    if (activeTab === "batters") {
+      container.appendChild(
+        makeElement(
+          "p",
+          "analysis-description",
+          favorite + " 타자 · 해당 연도 누적 기록"
+        )
+      );
+
+      container.appendChild(
+        makeElement(
+          "div",
+          "notice",
+          "타율, 출루율, 장타율, OPS, 홈런, 타점, " +
+          "안타, 타석 등의 공식 기록을 연결할 예정입니다. " +
+          "규정타석 충족 여부도 구분합니다."
+        )
+      );
+
+      return;
+    }
+
+    if (activeTab === "pitchers") {
+      container.appendChild(
+        makeElement(
+          "p",
+          "analysis-description",
+          favorite + " 투수 · 해당 연도 누적 기록"
+        )
+      );
+
+      container.appendChild(
+        makeElement(
+          "div",
+          "notice",
+          "평균자책점, WHIP, 이닝, 탈삼진, 승, " +
+          "세이브, 홀드 등의 공식 기록을 연결할 예정입니다. " +
+          "선발과 불펜을 구분해 규정이닝 미달 구원투수도 " +
+          "확인할 수 있도록 구성합니다."
+        )
+      );
+    }
+  }
+
+  function updateFavorite() {
+    const favorite = currentFavorite();
+
+    saveFavorite(favorite);
+
+    // 관심팀은 순위와 분석에만 영향을 줍니다.
+    renderStandings();
+    renderAnalysis();
+
+    // 오늘의 경기에는 필터를 적용하지 않습니다.
+  }
+
+  function setupTabs() {
+    const buttons = document.querySelectorAll(".tab-button");
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeTab = button.dataset.tab;
+
+        buttons.forEach((item) => {
+          item.classList.toggle(
+            "active",
+            item.dataset.tab === activeTab
+          );
+        });
+
+        renderAnalysis();
+      });
+    });
+  }
+
+  function renderData() {
+    const kst = getKstDate();
+    const isToday = data.game_date === kst;
+
+    const updatedTime = data.updated_at
+      ? Date.parse(data.updated_at)
+      : NaN;
+
+    const age = Date.now() - updatedTime;
+
+    const isRecent =
+      Number.isFinite(age) &&
+      age >= -300000 &&
+      age < 10800000;
+
+    const status = $("status");
+
+    if (isToday && isRecent) {
+      status.textContent =
+        data.status || "KBO 공식 경기 일정 확인";
+
+      status.classList.add("ok");
+    } else if (isToday) {
+      status.textContent =
+        "오늘 일정 · 최신 갱신 여부 확인 필요";
+
+      status.classList.remove("ok");
+    } else {
+      status.textContent =
+        "이전 날짜 데이터 · 갱신 확인 필요";
+
+      status.classList.remove("ok");
+    }
+
+    $("headline").textContent =
+      data.title || "KBO 경기 일정";
+
+    if (!isToday) {
+      $("headline").textContent +=
+        " · 현재 날짜와 다를 수 있습니다";
+    }
+
+    $("updated").textContent =
+      "데이터 기준: " +
+      (data.updated_at || "미확인");
+
+    const year = String(data.game_date || "").slice(0, 4);
+
+    $("standings-title").textContent =
+      (year || "KBO") + " KBO 시즌 순위";
+
+    standings = Array.isArray(data.standings)
+      ? data.standings
+      : [];
+
+    $("insights").textContent =
+      data.note || "분석 준비 중입니다.";
+
+    // 핵심: 데이터를 받은 뒤 경기 표시 함수를 실행합니다.
+    renderGames();
+    renderLineups();
+    updateFavorite();
+  }
+
+  async function loadData() {
+    try {
+      const response = await fetch(
+        "./data/today.json?ts=" + Date.now(),
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "HTTP " + response.status
+        );
+      }
+
+      data = await response.json();
+
+      renderData();
+
+    } catch (error) {
+      console.error("데이터 로딩 실패:", error);
+
+      $("status").textContent = "데이터 연결 오류";
+
+      $("headline").textContent =
+        "경기 데이터를 불러오지 못했습니다.";
+
+      $("matches").replaceChildren(
+        makeElement(
+          "div",
+          "empty-state",
+          "데이터 파일을 불러오지 못했습니다. " +
+          "잠시 후 새로고침해 주세요."
+        )
+      );
+
+      $("standings").replaceChildren(
+        makeElement(
+          "div",
+          "empty-state",
+          "순위 데이터를 불러오지 못했습니다."
+        )
+      );
+    }
+  }
+
+  $("favorite").addEventListener(
+    "change",
+    updateFavorite
+  );
+
+  setupTabs();
+  renderAnalysis();
+  loadData();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("./sw.js")
+      .catch(() => {});
+  }
+
 })();
 </script>
+
 </body>
 </html>
