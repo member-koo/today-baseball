@@ -1,0 +1,176 @@
+"""Deterministic pre-game estimates and numeric comparisons; no generative service."""
+import datetime as dt
+import json
+import math
+from pathlib import Path
+from zoneinfo import ZoneInfo
+from head_to_head import TEAMS
+from player_records import BASE, CODES, ROOT, atomic, request, session
+
+DAILY = BASE+'/ws/Main.asmx/GetKboGameList'
+
+
+def team_history(boxes, team, before):
+    result=[]
+    for g in sorted(boxes,key=lambda x:(x['date'],x['id'])):
+        if g['date']>=before.isoformat() or team not in (g['away'],g['home']):
+            continue
+        side='away' if g['away']==team else 'home'
+        other='home' if side=='away' else 'away'
+        result.append(dict(date=g['date'],id=g['id'],opponent=g[other],
+                           rs=g[side+'_score'],ra=g[other+'_score'],source=g['source']))
+    return result
+
+
+def team_summary(games):
+    n=len(games)
+    return dict(games=n,runs_scored=sum(g['rs'] for g in games),runs_allowed=sum(g['ra'] for g in games),
+                scored_per_game=round(sum(g['rs'] for g in games)/n,2) if n else None,
+                allowed_per_game=round(sum(g['ra'] for g in games)/n,2) if n else None,
+                wins=sum(g['rs']>g['ra'] for g in games),losses=sum(g['rs']<g['ra'] for g in games),
+                draws=sum(g['rs']==g['ra'] for g in games))
+
+
+def starter_summary(boxes, team, name, opponent, before):
+    logs=[]
+    if not name:
+        return None
+    for box in sorted(boxes,key=lambda x:(x['date'],x['id'])):
+        if box['date']>=before.isoformat():
+            continue
+        matches=[p for p in box['pitchers'] if p['team']==team and p['name']==name]
+        if len(matches)>1:
+            return None
+        logs.extend(matches)
+    if not logs:
+        return None
+    def stats(rows):
+        outs=sum(p['outs'] for p in rows)
+        return dict(appearances=len(rows),outs=outs,ERA=round(sum(p['ER'] for p in rows)*27/outs,2) if outs else None)
+    starts=[p for p in logs if p.get('starter')]
+    return dict(name=name,season=stats(logs),recent3=stats(starts[-3:]),recent5=stats(starts[-5:]),
+                opponent=stats([p for p in logs if p['opponent']==opponent]))
+
+
+def estimate(game, boxes, date):
+    # Exclusively use completed games dated before today's game.
+    eligible=[b for b in boxes if b['date']<date.isoformat()]
+    histories={t:team_history(eligible,t,date) for t in TEAMS}
+    a,h=histories[game['away']],histories[game['home']]
+    if min(len(a),len(h))<10:
+        return None
+    gp=sum(len(rows) for rows in histories.values())
+    league=sum(g['rs'] for rows in histories.values() for g in rows)/gp
+    if league<=0:
+        return None
+    def rate(history,key,opponent):
+        def smooth(rows,n):
+            return (sum(g[key] for g in rows)+n*league)/(len(rows)+n)
+        return (.60*smooth(history,10)+.30*smooth(history[-10:],5)
+                +.10*smooth([g for g in history if g['opponent']==opponent],10))
+    away=rate(a,'rs',game['home'])*rate(h,'ra',game['away'])/league
+    home=rate(h,'rs',game['away'])*rate(a,'ra',game['home'])/league*1.04
+    starters={}
+    # Starting-pitcher identity must already come from the official daily listing.
+    for side,other in [('away','home'),('home','away')]:
+        starter=(game.get('starting_pitchers') or {}).get(side)
+        name=starter.get('name') if isinstance(starter,dict) and starter.get('logs_verified') else None
+        stat=starter_summary(eligible,game[side],name,game[other],date)
+        starters[side]=stat
+        if stat and stat['season']['outs']>=90:
+            recent=stat['recent5']
+            era=.7*stat['season']['ERA']+.3*(recent['ERA'] if recent['outs']>=27 else stat['season']['ERA'])
+            # Modest, capped influence: starter covers only part of the game.
+            factor=max(.85,min(1.15,1+.25*(era-league)/league))
+            if side=='away': home*=factor
+            else: away*=factor
+    away,home=(max(.1,min(15,x)) for x in (away,home))
+    return dict(away_score=math.floor(away+.5),home_score=math.floor(home+.5),
+                expected_away_runs=round(away,2),expected_home_runs=round(home,2),
+                stats_as_of=max(g['date'] for g in eligible),
+                method='참고 예상 · 시즌 60% / 최근10경기 30% / 상대전적 10% (평균으로 보정)',
+                starters_included=[side for side in starters if starters[side] and starters[side]['season']['outs']>=90],
+                provisional=True,validated_accuracy=False)
+
+
+def comparison(game, boxes, date):
+    result={}
+    for side,other in [('away','home'),('home','away')]:
+        history=team_history(boxes,game[side],date)
+        pitcher=(game.get('starting_pitchers') or {}).get(side)
+        name=pitcher.get('name') if isinstance(pitcher,dict) and pitcher.get('logs_verified') else None
+        result[side]=dict(team=game[side],season=team_summary(history),recent5=team_summary(history[-5:]),
+                          recent10=team_summary(history[-10:]),
+                          opponent=team_summary([g for g in history if g['opponent']==game[other]]),
+                          starter=starter_summary(boxes,game[side],name,game[other],date))
+    return result
+
+
+def parse_daily(payload,date):
+    if str(payload.get('code'))!='100' or not isinstance(payload.get('game'),list):
+        raise ValueError('Daily KBO response unverified')
+    games=[]
+    reverse={v:k for k,v in CODES.items()}
+    for raw in payload['game']:
+        if raw.get('G_DT')!=date.strftime('%Y%m%d') or int(raw.get('SEASON_ID',0))!=date.year:
+            raise ValueError('Daily game date/season mismatch')
+        if raw.get('AWAY_ID') not in reverse or raw.get('HOME_ID') not in reverse:
+            raise ValueError('Unknown daily team')
+        starting={}
+        for side,prefix in [('away','T'),('home','B')]:
+            pid=raw.get(prefix+'_PIT_P_ID')
+            name=str(raw.get(prefix+'_PIT_P_NM') or '').strip()
+            starting[side]=dict(id=str(pid),name=name) if pid and name else None
+        games.append(dict(id=raw['G_ID'],time=raw.get('G_TM'),venue=raw.get('S_NM'),
+                          away=reverse[raw['AWAY_ID']],home=reverse[raw['HOME_ID']],
+                          series_id=raw['SR_ID'],state=str(raw.get('GAME_STATE_SC','')),
+                          cancelled=str(raw.get('CANCEL_SC_ID','0'))!='0',
+                          final=raw.get('GAME_RESULT_CK')==1,
+                          away_score=raw.get('T_SCORE_CN'),home_score=raw.get('B_SCORE_CN'),
+                          starting_pitchers=starting,
+                          source=BASE+'/Schedule/GameCenter/Main.aspx?gameDate='+raw['G_DT']+'&gameId='+raw['G_ID']))
+    if len({g['id'] for g in games})!=len(games):
+        raise ValueError('Duplicate daily game')
+    return games
+
+
+def collect(date,directory=None,now=None):
+    directory=Path(directory or ROOT/'data')
+    now=now or dt.datetime.now(ZoneInfo('Asia/Seoul'))
+    s=session()
+    payload=json.loads(request(s,'POST',DAILY,data=dict(leId='1',srId='0,1,3,4,5,6,7,9',date=date.strftime('%Y%m%d'))).content.decode('utf-8-sig'))
+    games=parse_daily(payload,date)
+    cache=json.loads((directory/'boxscores.json').read_text(encoding='utf-8'))
+    boxes=list(cache.values())
+    players_path=directory/'players.json'
+    players=json.loads(players_path.read_text(encoding='utf-8')) if players_path.exists() else {}
+    old_path=directory/'daily_analysis.json'
+    old=json.loads(old_path.read_text(encoding='utf-8')) if old_path.exists() else {}
+    previous={g['id']:g for g in old.get('games',[]) if old.get('game_date')==date.isoformat()}
+    for g in games:
+        for side in ('away','home'):
+            starter=g['starting_pitchers'].get(side)
+            if starter:
+                matches=[p for p in players.get('teams',{}).get(g[side],{}).get('pitchers',[])
+                         if p['id']==starter['id'] and p['name']==starter['name']]
+                starter['logs_verified']=len(matches)==1 and matches[0].get('logs_verified',False)
+        g['comparison']=comparison(g,boxes,date)
+        kickoff=dt.datetime.fromisoformat(date.isoformat()+'T'+g['time']).replace(tzinfo=ZoneInfo('Asia/Seoul'))
+        g['prediction']=None
+        if not g['cancelled'] and not g['final'] and now<kickoff:
+            g['prediction']=estimate(g,boxes,date)
+            if g['prediction']:
+                g['prediction']['generated_at']=now.isoformat(timespec='seconds')
+        elif g['id'] in previous and not g['cancelled']:
+            g['prediction']=previous[g['id']].get('prediction')
+        g['prediction_status']='취소 경기' if g['cancelled'] else ('경기 전 저장된 예상' if g['prediction'] else '경기 전 기록 부족 또는 경기 시작 후 신규 예측 보류')
+    result=dict(schema_version=1,game_date=date.isoformat(),updated_at=now.isoformat(timespec='seconds'),
+                source=BASE+'/Schedule/GameCenter/Main.aspx',games=games,
+                note='AI API 미사용 · 공식 정규시즌 기록 기반 참고 예상 · 정확도 미검증 · 확정 라인업·불펜 소모 미반영')
+    atomic(old_path,result)
+    print(f'Daily comparison: {date}, {len(games)} games',flush=True)
+    return result
+
+
+if __name__=='__main__':
+    collect(dt.datetime.now(ZoneInfo('Asia/Seoul')).date())
