@@ -288,6 +288,10 @@
     .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
     .metric-grid .game-card { margin:0; }
     [hidden] { display:none !important; }
+    .result-button { border:1px solid transparent; cursor:pointer; min-width:34px; margin:2px; font-family:inherit; }
+    .result-button[aria-pressed="true"] { background:#3975c5; border-color:#a4d0ff; color:white; }
+    .result-button:focus-visible { outline:2px solid #a4d0ff; outline-offset:2px; }
+    .game-detail { margin-top:14px; padding:12px 16px; background:#233249; border-radius:10px; }
 
     .footer-note {
       font-size: 13px;
@@ -442,10 +446,6 @@
     </div>
   </section>
 
-  <p class="footer-note">
-    공식적으로 확인된 자료만 표시합니다.
-    예상 점수는 공식 기록을 계산한 참고값이며 정확도는 검증 중입니다. AI API는 사용하지 않습니다.
-  </p>
 
 </main>
 
@@ -899,15 +899,14 @@
       ? (season ? [["AVG","타율"],["G","경기"],["PA","타석"],["AB","타수"],["H","안타"],["HR","홈런"],["RBI","타점"],["R","득점"]]
                 : [["AVG","타율"],["G","출전"],["AB","타수"],["H","안타"],["RBI","타점"],["R","득점"]])
       : [["ERA","ERA"],["G","등판"],["IP","이닝"],["SO","삼진"],["W","승"],["L","패"],["SV","세이브"],["HLD","홀드"],...(season?[["WHIP","WHIP"]]:[])];
-    container.appendChild(makeElement("p","small muted", "2026 정규시즌 · " + (recordPeriod === "opponent" ? team+" vs "+opponent+" · " : "") +
-      (season ? "공식 누적 기록 · " : "경기별 기록 기준 " + playerRecords.through_date + " · ") + "갱신 " + playerRecords.updated_at));
+    if (recordPeriod === "opponent") container.appendChild(makeElement("p","small muted",team+" vs "+opponent));
     container.appendChild(recordTable(["선수",...fields.map(f=>f[1])],people.map(p=>{
       const stats=statsFor(p);
       return [p.name,...fields.map(([key])=>stats?.[key] ?? "-")];
     })));
     container.appendChild(makeElement("p","small muted",season
-      ? "출처: KBO 공식 선수 기록. 규정타석·규정이닝 미달 선수도 포함합니다."
-      : "최근 기록은 팀 경기 수가 아닌 선수의 실제 출전·등판 기준입니다. 출전 수·타수·이닝을 함께 확인하세요. '-'는 선수 식별 또는 공식 누적 합계와의 대조가 미확인된 기록입니다."));
+      ? "규정타석·규정이닝 미달 선수 포함"
+      : "선수 출전·등판 기준 · - 미확인"));
   }
 
   function renderComparison() {
@@ -963,15 +962,11 @@
     }
 
     if (activeTab === "matchup") {
-      container.appendChild(
-        makeElement(
-          "p",
-          "analysis-description",
-          favorite +
-          "의 해당 연도 전체 맞대결 기록을 표시합니다. " +
-          "오늘 경기가 없어도 시즌 기록은 유지됩니다."
-        )
-      );
+      const detail = makeElement("div", "game-detail");
+      detail.hidden = true;
+      detail.setAttribute("role", "status");
+      detail.setAttribute("aria-live", "polite");
+      let selectedResult = null;
 
       const table = document.createElement("table");
 
@@ -1012,9 +1007,22 @@
           if (record && Array.isArray(record.flow)) {
             if (!record.flow.length) flow.textContent = "맞대결 없음";
             record.flow.forEach((game) => {
-              const badge = makeElement("span", "tag", game.result);
-              badge.title = game.date + " · " + favorite + " " + game.score;
-              badge.style.margin = "2px";
+              const badge = makeElement("button", "tag result-button", game.result);
+              badge.type = "button";
+              badge.setAttribute("aria-pressed", "false");
+              badge.setAttribute("aria-label", game.date + " " + favorite + " 대 " + team + " " + game.result + " " + game.score + " 상세 보기");
+              badge.addEventListener("click", () => {
+                const wasSelected = selectedResult === badge;
+                if (selectedResult) selectedResult.setAttribute("aria-pressed", "false");
+                selectedResult = wasSelected ? null : badge;
+                detail.hidden = wasSelected;
+                if (!wasSelected) {
+                  badge.setAttribute("aria-pressed", "true");
+                  flow.appendChild(detail);
+                  const scores = String(game.score).split(":");
+                  detail.textContent = game.date + " · " + favorite + " " + scores[0] + " : " + scores[1] + " " + team + " · " + game.result;
+                }
+              });
               flow.appendChild(badge);
             });
           } else flow.textContent = "-";
@@ -1029,24 +1037,8 @@
       wrapper.appendChild(table);
 
       container.appendChild(wrapper);
-
-      container.appendChild(
-        makeElement(
-          "p",
-          "analysis-description",
-          "2026 정규시즌 · " + (seasonMatchups
-            ? seasonMatchups.through_date + "까지 종료된 경기 · 갱신: " + seasonMatchups.updated_at
-            : "공식 결과 확인 필요") + " · 승패 표시에 마우스를 올리면 날짜와 점수가 나옵니다."
-        )
-      );
-
-      container.appendChild(
-        makeElement(
-          "div",
-          "notice",
-          "KBO 공식 정규시즌 종료 결과만 집계합니다. 타율·ERA는 상대팀별 공식 타수·안타·자책점·투구이닝 미확인으로 '-'를 유지합니다."
-        )
-      );
+      container.appendChild(detail);
+      container.appendChild(makeElement("p", "small muted", "타율·ERA 미확인"));
 
       return;
     }
@@ -1127,6 +1119,16 @@
     });
   }
 
+  function renderUpdated() {
+    const sources = [["경기", data?.updated_at], ["상대전적", seasonMatchups?.updated_at], ["선수", playerRecords?.updated_at]];
+    const dates = sources.map(([,value])=>Date.parse(value)).filter(Number.isFinite);
+    if (!dates.length) { $("updated").textContent = "업데이트 미확인"; return; }
+    const parts = new Intl.DateTimeFormat("en-GB", {timeZone:"Asia/Seoul",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date(Math.max(...dates)));
+    const values = Object.fromEntries(parts.map(p=>[p.type,p.value]));
+    $("updated").textContent = "업데이트 " + values.month + "." + values.day + " " + values.hour + ":" + values.minute;
+    $("updated").title = sources.filter(([,value])=>value).map(([label,value])=>label+": "+value).join("\n");
+  }
+
   function renderData() {
     if (dailyAnalysis && dailyAnalysis.game_date === getKstDate()) {
       data = {...(data || {}), games:dailyAnalysis.games, game_date:dailyAnalysis.game_date,
@@ -1174,9 +1176,7 @@
         " · 현재 날짜와 다를 수 있습니다";
     }
 
-    $("updated").textContent =
-      "데이터 기준: " +
-      (data.updated_at || "미확인");
+    renderUpdated();
 
     const year = String(data.game_date || "").slice(0, 4);
 
@@ -1257,6 +1257,7 @@
         throw new Error("Season mismatch");
       }
       seasonMatchups = result;
+      renderUpdated();
       renderStandings();
       renderAnalysis();
     })
@@ -1265,7 +1266,7 @@
     .then(r => { if (!r.ok) throw new Error("선수 기록 미확인"); return r.json(); })
     .then(result => {
       if (result.season !== 2026 || result.series !== "regular" || !result.teams) throw new Error("선수 시즌 불일치");
-      playerRecords = result; renderAnalysis();
+      playerRecords = result; renderUpdated(); renderAnalysis();
     }).catch(error => { console.warn(error); renderAnalysis(); });
   fetch("./data/daily_analysis.json?ts=" + Date.now(), {cache:"no-store"})
     .then(r => { if (!r.ok) throw new Error("당일 비교 기록 미확인"); return r.json(); })
