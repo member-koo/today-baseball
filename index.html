@@ -862,7 +862,8 @@
       container.appendChild(makeElement("div","empty-state","오늘 확인된 관심팀 경기가 없습니다. 상대팀을 직접 선택하면 시즌 맞대결 기록을 볼 수 있습니다."));
       return;
     }
-    const people = [...(playerRecords.teams[team]?.[kind] || [])];
+    const people = (playerRecords.teams[team]?.[kind] || [])
+      .filter(player => kind !== "batters" || Number(player.season?.PA) > 0);
     const season = recordPeriod === "season";
     const statsFor = p => season ? p.season : recordPeriod === "opponent" ? p.opponents?.[opponent] : p[recordPeriod];
     people.sort((a,b)=>Number(statsFor(b)?.[kind==="batters"?"AB":"outs"] || (kind==="pitchers"? Number.parseFloat(statsFor(b)?.IP):0) || 0)-Number(statsFor(a)?.[kind==="batters"?"AB":"outs"] || (kind==="pitchers"?Number.parseFloat(statsFor(a)?.IP):0) || 0));
