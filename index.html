@@ -754,7 +754,7 @@
 
     [
       "순위", "구단", "경기",
-      "승", "패", "무", "승률"
+      "승", "패", "무", "승률", "게임차", "연속", "최근 10경기"
     ].forEach((name) => {
       headRow.appendChild(makeElement("th", "", name));
     });
@@ -766,6 +766,7 @@
     const sorted = [...standings].sort(
       (a, b) => Number(a.rank) - Number(b.rank)
     );
+    const leader = sorted[0];
 
     sorted.forEach((team) => {
       const row = document.createElement("tr");
@@ -810,6 +811,33 @@
           formatPct(team.win_pct)
         )
       );
+      const gap = (Number(leader.wins) - Number(team.wins) + Number(team.losses) - Number(leader.losses)) / 2;
+      row.appendChild(makeElement("td", "", Number.isFinite(gap) ? gap.toFixed(1) : "-"));
+      let streak = "-", recent = "-";
+      const opponents = seasonMatchups?.season === Number(String(data?.game_date || "").slice(0, 4))
+        && seasonMatchups?.series === "regular" ? seasonMatchups.teams?.[team.team] : null;
+      if (opponents) {
+        const history = Object.values(opponents).flatMap(record => Array.isArray(record.flow) ? record.flow : [])
+          .sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+        const count = result => history.filter(game => game.result === result).length;
+        const verified = history.length === Number(team.games)
+          && new Set(history.map(game => game.id)).size === history.length
+          && count("승") === Number(team.wins) && count("패") === Number(team.losses) && count("무") === Number(team.draws);
+        if (verified && history.length) {
+          const last10 = history.slice(-10);
+          recent = ["승", "패", "무"].map(result => last10.filter(game => game.result === result).length + result).join("-");
+          const decisions = history.filter(game => game.result !== "무");
+          if (decisions.length) {
+            const last = decisions[decisions.length - 1].result;
+            let length = 0;
+            for (let i = decisions.length - 1; i >= 0 && decisions[i].result === last; i--) length++;
+            streak = length + last;
+          } else streak = history.length + "무";
+        }
+      }
+      const streakCell = makeElement("td", "", streak);
+      streakCell.title = "무승부는 연승·연패 계산에서 제외합니다.";
+      row.append(streakCell, makeElement("td", "", recent));
 
       tbody.appendChild(row);
     });
@@ -1229,6 +1257,7 @@
         throw new Error("Season mismatch");
       }
       seasonMatchups = result;
+      renderStandings();
       renderAnalysis();
     })
     .catch((error) => { console.warn(error); renderAnalysis(); });
