@@ -29,6 +29,7 @@ jobs:
           cp index.html sw.js manifest.webmanifest _site/
           cp data/today.json _site/data/today.json
           cp data/head_to_head.json _site/data/head_to_head.json
+          cp data/players.json data/daily_analysis.json _site/data/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
