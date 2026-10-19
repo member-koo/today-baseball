@@ -338,6 +338,18 @@
         font-size: 13px;
       }
     }
+    .model-preview { border: 1px solid #355779; }
+    .model-preview .panel-heading { gap: 10px; flex-wrap: wrap; }
+    .model-preview select { max-width: 100%; margin-bottom: 16px; }
+    .model-judgment { font-size: 24px; font-weight: 800; margin: 12px 0 6px; }
+    .model-judgment.favored { color: #74dfb5; }
+    .model-judgment.close { color: #ffd78a; }
+    .model-judgment.unfavored { color: #ffa7ad; }
+    .model-probability { display: flex; height: 9px; overflow: hidden; border-radius: 8px; background: #487dab; margin: 14px 0 8px; }
+    .model-probability span { background: #8cbce3; }
+    .model-labels { display:flex; justify-content:space-between; gap:12px; font-size:13px; color:#a9bad0; }
+    .model-details { margin-top:14px; font-size:13px; color:#a9bad0; }
+    .model-details summary { cursor:pointer; }
   </style>
 </head>
 
@@ -393,6 +405,17 @@
 
     <p id="updated" class="muted small"
        style="margin-top:20px;margin-bottom:0"></p>
+  </section>
+
+  <section class="panel model-preview" id="model-preview-panel" hidden>
+    <div class="panel-heading">
+      <h2>우세·접전·열세 미리보기</h2>
+      <span class="tag">과거 경기 예시</span>
+    </div>
+    <p class="muted small" id="model-preview-caption"></p>
+    <label class="small" for="model-preview-game">예시 경기 선택</label><br>
+    <select id="model-preview-game"></select>
+    <div id="model-preview-content"></div>
   </section>
 
   <!-- 시즌 순위 -->
@@ -464,6 +487,8 @@
   let seasonMatchups = null;
   let playerRecords = null;
   let dailyAnalysis = null;
+  let modelPreview = null;
+  let previewTeam = null;
   let recordPeriod = "season";
   let selectedOpponent = "today";
   let standings = [];
@@ -635,31 +660,13 @@
         }
       }
 
-      if (game.prediction) {
-        const prediction = game.prediction;
-
-        if (
-          prediction.away_score !== undefined &&
-          prediction.home_score !== undefined
-        ) {
-          card.appendChild(
-            makeElement(
-              "div",
-              "game-note",
-              "기록 기반 참고 예상 · " +
-              game.away + " " +
-              prediction.away_score + " : " +
-              prediction.home_score + " " +
-              game.home
-            )
-          );
-          card.appendChild(makeElement("div", "small muted",
-            (prediction.method || "") + " · 기록 기준 " + (prediction.stats_as_of || "미확인") +
-            " · 선발 " + (prediction.starters_included?.length ? "일부/전부 반영" : "미반영") +
-            " · 확정 라인업·불펜 소모 미반영 · 정확도 미검증"));
-        }
-      } else if (game.prediction_status && !game.cancelled && !game.final) {
-        card.appendChild(makeElement("div", "game-note", "예상 점수: " + game.prediction_status));
+      const regular = ["0", "9", "6"].includes(String(game.series_id));
+      if (!game.cancelled && regular && game.model_prediction) {
+        appendModelView(card, game, game.model_prediction);
+      } else if (!regular && game.series_id !== undefined && !game.cancelled) {
+        card.appendChild(makeElement("div", "small muted", "포스트시즌은 예상 점수를 제공하지 않습니다."));
+      } else if (regular && !game.cancelled && !game.final) {
+        card.appendChild(makeElement("div", "small muted", "모델 분석 대기 · 선발과 경기 전 기록 확인 후 표시"));
       }
 
 
@@ -1096,9 +1103,56 @@
     renderStandings();
     renderAnalysis();
     renderComparison();
+    renderModelPreview();
+    if (data) renderGames();
 
     // 오늘의 경기에는 필터를 적용하지 않습니다.
   }
+
+  function appendModelView(container, game, prediction, focusTeam = currentFavorite()) {
+    const homeP = Number(prediction.home_probability);
+    if (!Number.isFinite(homeP) || homeP < 0 || homeP > 1) return;
+    const focus = [game.away,game.home].includes(focusTeam) ? focusTeam : (homeP >= .5 ? game.home : game.away);
+    const p = focus === game.home ? homeP : 1-homeP;
+    const status = p >= .6 ? "우세" : p <= .4 ? "열세" : "접전";
+    const kind = p >= .6 ? "favored" : p <= .4 ? "unfavored" : "close";
+    container.appendChild(makeElement("div", "model-judgment " + kind, status === "접전" ? game.away + " · " + game.home + " 접전" : focus + " " + status));
+    container.appendChild(makeElement("div", "game-note", "참고 스코어 · " + game.away + " " + prediction.away_score + " : " + prediction.home_score + " " + game.home));
+    const bar=makeElement("div","model-probability");
+    const segment=makeElement("span");segment.style.width=((1-homeP)*100)+"%";bar.append(segment);
+    bar.setAttribute("aria-hidden","true");container.append(bar);
+    const labels=makeElement("div","model-labels");
+    labels.append(makeElement("span","",game.away+" "+Math.round((1-homeP)*100)+"%"),makeElement("span","",game.home+" "+Math.round(homeP*100)+"%"));container.append(labels);
+    container.appendChild(makeElement("p","small muted","실험 모델 · 확정 라인업 미반영"));
+    const details=makeElement("details","model-details");details.append(makeElement("summary","","예측 기준 보기"));
+    details.append(makeElement("p","","팀 전력·선발·불펜·득점 모델을 결합한 참고값입니다. 확률은 승패가 갈리는 경우 기준이며, 검증된 적중률을 뜻하지 않습니다. 동점 스코어도 무승부 예측을 뜻하지 않습니다. 기록 기준: "+prediction.stats_as_of));
+    container.append(details);
+  }
+
+  function renderModelPreview() {
+    if (!modelPreview || modelPreview.kind !== "historical_preview") return;
+    const team=currentFavorite()==="전체" ? "KIA" : currentFavorite();
+    const games=modelPreview.games.filter(g=>g.away===team || g.home===team).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+    if (!games.length) return;
+    const select=$("model-preview-game");
+    if (previewTeam!==team || !games.some(g=>g.id===select.value)) {
+      select.replaceChildren();
+      games.forEach(g=>{ const option=makeElement("option","",g.date+" · "+g.away+" vs "+g.home);option.value=g.id;select.append(option); });
+      previewTeam=team;
+    }
+    $("model-preview-panel").hidden=false;
+    $("model-preview-caption").textContent=team+"의 정규시즌 과거 경기로 보는 실험 화면입니다. 오늘 예상과 별개이며, 관심팀을 바꾸면 예시도 바뀝니다.";
+    const game=games.find(g=>g.id===select.value)||games[0];
+    const content=$("model-preview-content");content.replaceChildren();
+    content.append(makeElement("div","game-meta",game.date+" · 과거 경기 예시"));
+    content.append(makeElement("div","game-note","선발 · "+game.starting_pitchers.away.name+" / "+game.starting_pitchers.home.name));
+    appendModelView(content,game,game.forecast,team);
+    const actual=makeElement("details","model-details");actual.append(makeElement("summary","","실제 결과 확인"));
+    actual.append(makeElement("p","",game.away+" "+game.actual[0]+" : "+game.actual[1]+" "+game.home));
+    const link=makeElement("a","","KBO 경기 기록");link.href=game.source;link.target="_blank";link.rel="noopener noreferrer";actual.append(link);content.append(actual);
+  }
+
+  $("model-preview-game").addEventListener("change",renderModelPreview);
 
   function setupTabs() {
     const buttons = document.querySelectorAll(".tab-button");
@@ -1280,6 +1334,11 @@
       .register("./sw.js")
       .catch(() => {});
   }
+
+  fetch("./model_preview.json?ts="+Date.now(),{cache:"no-store"})
+    .then(r=>{if(!r.ok) throw new Error("모델 예시 미확인");return r.json();})
+    .then(result=>{if(result.kind!=="historical_preview"||!Array.isArray(result.games))throw new Error("모델 예시 형식 오류");modelPreview=result;renderModelPreview();})
+    .catch(error=>console.warn(error));
 
 })();
 </script>

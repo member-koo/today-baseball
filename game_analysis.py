@@ -6,6 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 from head_to_head import TEAMS
 from player_records import BASE, CODES, ROOT, atomic, request, session
+from experimental_model import forecast as experimental_forecast
 
 DAILY = BASE+'/ws/Main.asmx/GetKboGameList'
 
@@ -148,6 +149,7 @@ def collect(date,directory=None,now=None):
     old=json.loads(old_path.read_text(encoding='utf-8')) if old_path.exists() else {}
     previous={g['id']:g for g in old.get('games',[]) if old.get('game_date')==date.isoformat()}
     for g in games:
+        regular = str(g['series_id']) in ('0','9','6')
         for side in ('away','home'):
             starter=g['starting_pitchers'].get(side)
             if starter:
@@ -157,13 +159,20 @@ def collect(date,directory=None,now=None):
         g['comparison']=comparison(g,boxes,date)
         kickoff=dt.datetime.fromisoformat(date.isoformat()+'T'+g['time']).replace(tzinfo=ZoneInfo('Asia/Seoul'))
         g['prediction']=None
-        if not g['cancelled'] and not g['final'] and now<kickoff:
+        g['model_prediction']=None
+        if regular and not g['cancelled'] and not g['final'] and now<kickoff:
             g['prediction']=estimate(g,boxes,date)
+            g['model_prediction']=experimental_forecast(g,boxes,date)
+            if g['model_prediction']:
+                g['model_prediction']['generated_at']=now.isoformat(timespec='seconds')
             if g['prediction']:
                 g['prediction']['generated_at']=now.isoformat(timespec='seconds')
-        elif g['id'] in previous and not g['cancelled']:
+        elif regular and g['id'] in previous and not g['cancelled']:
             g['prediction']=previous[g['id']].get('prediction')
+            g['model_prediction']=previous[g['id']].get('model_prediction')
         g['prediction_status']='취소 경기' if g['cancelled'] else ('경기 전 저장된 예상' if g['prediction'] else '경기 전 기록 부족 또는 경기 시작 후 신규 예측 보류')
+        if not regular:
+            g['prediction_status']='포스트시즌 예상은 제공하지 않습니다'
     result=dict(schema_version=1,game_date=date.isoformat(),updated_at=now.isoformat(timespec='seconds'),
                 source=BASE+'/Schedule/GameCenter/Main.aspx',games=games,
                 note='AI API 미사용 · 공식 정규시즌 기록 기반 참고 예상 · 정확도 미검증 · 확정 라인업·불펜 소모 미반영')
