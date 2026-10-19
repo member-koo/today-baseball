@@ -48,7 +48,11 @@ def starter_summary(boxes, team, name, opponent, before):
         return None
     def stats(rows):
         outs=sum(p['outs'] for p in rows)
-        return dict(appearances=len(rows),outs=outs,ERA=round(sum(p['ER'] for p in rows)*27/outs,2) if outs else None)
+        return dict(appearances=len(rows),outs=outs,
+                    IP=str(outs//3)+(f' {outs%3}/3' if outs%3 else ''),
+                    wins=sum(p['W'] for p in rows) if all(p.get('W') in (0,1) for p in rows) else None,
+                    losses=sum(p['L'] for p in rows) if all(p.get('L') in (0,1) for p in rows) else None,
+                    ERA=round(sum(p['ER'] for p in rows)*27/outs,2) if outs else None)
     starts=[p for p in logs if p.get('starter')]
     return dict(name=name,season=stats(logs),recent3=stats(starts[-3:]),recent5=stats(starts[-5:]),
                 opponent=stats([p for p in logs if p['opponent']==opponent]))

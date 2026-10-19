@@ -919,9 +919,19 @@
       rows.push(["선발 시즌 ERA",c.away.starter?.season?.ERA,c.home.starter?.season?.ERA]);
       rows.push(["최근 3선발 ERA",c.away.starter?.recent3?.ERA,c.home.starter?.recent3?.ERA]);
       rows.push(["최근 5선발 ERA",c.away.starter?.recent5?.ERA,c.home.starter?.recent5?.ERA]);
-      rows.push(["선발 상대팀 ERA",c.away.starter?.opponent?.ERA,c.home.starter?.opponent?.ERA]);
+      const opponentStat = (side, key) => {
+        const stat = c[side].starter?.opponent;
+        if (!stat) return "-";
+        if (!stat.appearances) return key === "record" ? "등판 없음" : "-";
+        if (key === "record") return stat.wins == null || stat.losses == null ? "-" : `${stat.wins}승 ${stat.losses}패`;
+        if (key === "ERA") return stat.ERA == null ? "-" : Number(stat.ERA).toFixed(2);
+        return stat.IP == null ? "-" : stat.IP + "이닝";
+      };
+      rows.push(["선발 상대팀 승·패",opponentStat("away","record"),opponentStat("home","record")]);
+      rows.push(["선발 상대팀 투구이닝",opponentStat("away","IP"),opponentStat("home","IP")]);
+      rows.push(["선발 상대팀 ERA",opponentStat("away","ERA"),opponentStat("home","ERA")]);
       content.appendChild(recordTable(["비교 항목",game.away,game.home],rows));
-      content.appendChild(makeElement("p","small muted","당일 경기 시작 전까지의 정규시즌 기록. '-'는 미확인 또는 등판·이닝 없음. 예상 점수는 검증 중인 참고값입니다."));
+      content.appendChild(makeElement("p","small muted","이번 시즌 정규시즌 기록이며, 선발 상대팀 성적은 구원 등판도 포함합니다. '-'는 미확인 또는 등판·이닝 없음. 예상 점수는 검증 중인 참고값입니다."));
     });
   }
 
