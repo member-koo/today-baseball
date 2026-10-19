@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from head_to_head import TEAMS
 from player_records import BASE, CODES, ROOT, atomic, request, session
 from experimental_model import forecast as experimental_forecast
+from next_schedule import find_next
 
 DAILY = BASE+'/ws/Main.asmx/GetKboGameList'
 
@@ -123,6 +124,7 @@ def parse_daily(payload,date):
             name=str(raw.get(prefix+'_PIT_P_NM') or '').strip()
             starting[side]=dict(id=str(pid),name=name) if pid and name else None
         games.append(dict(id=raw['G_ID'],time=raw.get('G_TM'),venue=raw.get('S_NM'),
+                          date=date.isoformat(),starters_announced=raw.get('START_PIT_CK') in (True,1,'1'),
                           away=reverse[raw['AWAY_ID']],home=reverse[raw['HOME_ID']],
                           series_id=raw['SR_ID'],state=str(raw.get('GAME_STATE_SC','')),
                           cancelled=str(raw.get('CANCEL_SC_ID','0'))!='0',
@@ -139,17 +141,40 @@ def collect(date,directory=None,now=None):
     directory=Path(directory or ROOT/'data')
     now=now or dt.datetime.now(ZoneInfo('Asia/Seoul'))
     s=session()
-    payload=json.loads(request(s,'POST',DAILY,data=dict(leId='1',srId='0,1,3,4,5,6,7,9',date=date.strftime('%Y%m%d'))).content.decode('utf-8-sig'))
-    games=parse_daily(payload,date)
+    def fetch_day(day):
+        payload=json.loads(request(s,'POST',DAILY,data=dict(leId='1',srId='0,1,3,4,5,6,7,9',date=day.strftime('%Y%m%d'))).content.decode('utf-8-sig'))
+        return parse_daily(payload,day)
+    games=fetch_day(date)
+    display_date=date
+    schedule_kind='today'
+    schedule_message=''
+    if not any(not g['cancelled'] for g in games):
+        try:
+            following=find_next(s,date,fetch_day)
+            if following:
+                display_date,games=following
+                schedule_kind='next'
+                schedule_message='오늘 경기가 없어 다음 경기일의 전 구단 일정을 표시합니다.'
+            else:
+                games=[]
+                schedule_kind='none'
+                schedule_message='공식적으로 확인된 다음 경기 일정이 없습니다.'
+        except Exception as error:
+            games=[]
+            schedule_kind='unavailable'
+            schedule_message='오늘 경기가 없습니다. 다음 공식 일정은 확인하지 못했습니다.'
+            print(f'Next schedule unavailable: {error}',flush=True)
     cache=json.loads((directory/'boxscores.json').read_text(encoding='utf-8'))
-    boxes=list(cache.values())
+    boxes=[box for box in cache.values() if box['date']<date.isoformat()]
     players_path=directory/'players.json'
     players=json.loads(players_path.read_text(encoding='utf-8')) if players_path.exists() else {}
     old_path=directory/'daily_analysis.json'
     old=json.loads(old_path.read_text(encoding='utf-8')) if old_path.exists() else {}
-    previous={g['id']:g for g in old.get('games',[]) if old.get('game_date')==date.isoformat()}
+    previous={g['id']:g for g in old.get('games',[]) if old.get('display_date',old.get('game_date'))==display_date.isoformat()}
     for g in games:
         regular = str(g['series_id']) in ('0','9','6')
+        if display_date>date and not g['starters_announced']:
+            g['starting_pitchers']={'away':None,'home':None}
         for side in ('away','home'):
             starter=g['starting_pitchers'].get(side)
             if starter:
@@ -157,12 +182,13 @@ def collect(date,directory=None,now=None):
                          if p['id']==starter['id'] and p['name']==starter['name']]
                 starter['logs_verified']=len(matches)==1 and matches[0].get('logs_verified',False)
         g['comparison']=comparison(g,boxes,date)
-        kickoff=dt.datetime.fromisoformat(date.isoformat()+'T'+g['time']).replace(tzinfo=ZoneInfo('Asia/Seoul'))
+        kickoff=(dt.datetime.fromisoformat(display_date.isoformat()+'T'+g['time']).replace(tzinfo=ZoneInfo('Asia/Seoul'))
+                 if re_time(g.get('time')) else None)
         g['prediction']=None
         g['model_prediction']=None
-        if regular and not g['cancelled'] and not g['final'] and now<kickoff:
-            g['prediction']=estimate(g,boxes,date)
-            g['model_prediction']=experimental_forecast(g,boxes,date)
+        if regular and not g['cancelled'] and not g['final'] and kickoff and now<kickoff:
+            g['prediction']=estimate(g,boxes,display_date)
+            g['model_prediction']=experimental_forecast(g,boxes,display_date)
             if g['model_prediction']:
                 g['model_prediction']['generated_at']=now.isoformat(timespec='seconds')
             if g['prediction']:
@@ -174,11 +200,20 @@ def collect(date,directory=None,now=None):
         if not regular:
             g['prediction_status']='포스트시즌 예상은 제공하지 않습니다'
     result=dict(schema_version=1,game_date=date.isoformat(),updated_at=now.isoformat(timespec='seconds'),
+                display_date=display_date.isoformat(),schedule_kind=schedule_kind,schedule_message=schedule_message,
                 source=BASE+'/Schedule/GameCenter/Main.aspx',games=games,
                 note='AI API 미사용 · 공식 정규시즌 기록 기반 참고 예상 · 정확도 미검증 · 확정 라인업·불펜 소모 미반영')
     atomic(old_path,result)
     print(f'Daily comparison: {date}, {len(games)} games',flush=True)
     return result
+
+
+def re_time(value):
+    # Unannounced times are schedule data, never an implicit midnight kickoff.
+    try:
+        return isinstance(value,str) and len(value)==5 and dt.time.fromisoformat(value) is not None
+    except ValueError:
+        return False
 
 
 if __name__=='__main__':
