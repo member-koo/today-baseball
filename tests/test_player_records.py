@@ -78,6 +78,7 @@ def test_daily_freezes_pregame_prediction_after_start(tmp_path, monkeypatch):
     class Response:
         content=json.dumps(payload).encode()
     monkeypatch.setattr(module,'request',lambda *args,**kwargs:Response())
+    monkeypatch.setattr(module,'find_next',lambda *args:None)
     (tmp_path/'boxscores.json').write_text(json.dumps({g['id']:g for g in history()}),encoding='utf-8')
     before=module.collect(dt.date(2026,4,15),tmp_path,dt.datetime(2026,4,15,16,tzinfo=ZoneInfo('Asia/Seoul')))
     prediction=before['games'][0]['prediction']
@@ -88,4 +89,4 @@ def test_daily_freezes_pregame_prediction_after_start(tmp_path, monkeypatch):
     assert after['games'][0]['prediction']==prediction
     raw['CANCEL_SC_ID']='1';Response.content=json.dumps(payload).encode()
     cancelled=module.collect(dt.date(2026,4,15),tmp_path,dt.datetime(2026,4,15,22,tzinfo=ZoneInfo('Asia/Seoul')))
-    assert cancelled['games'][0]['prediction'] is None
+    assert cancelled['games']==[] and cancelled['schedule_kind']=='none'
